@@ -1,23 +1,24 @@
-// This custom hook manages the WebRTC connection and communication via Socket.io.
 import { useEffect, useRef } from 'react';
 import { io } from 'socket.io-client';
 
 // ICE servers configuration for WebRTC
 const ICE_SERVERS = {
   iceServers: [
-    { urls: 'stun:stun.l.google.com:19302' },
+    { urls: 'stun:stun.l.google.com:19302' }, // STUN server to discover public IP address
     { urls: 'stun:stun1.l.google.com:19302' },
   ],
 };
 
 const useVideoChat = () => {
-  // References to the video elements for local and remote streams
+  // References to video elements for local and remote streams
   const localVideoRef = useRef<HTMLVideoElement>(null);
   const remoteVideoRef = useRef<HTMLVideoElement>(null);
   // Reference to the RTCPeerConnection instance
   const peerConnectionRef = useRef<RTCPeerConnection | null>(null);
   // Reference to the Socket.io client
   const socketRef = useRef<any>(null);
+  // Reference to the local media stream
+  const localStreamRef = useRef<MediaStream | null>(null);
 
   useEffect(() => {
     // Initialize Socket.io connection to the server
@@ -51,7 +52,7 @@ const useVideoChat = () => {
       }
     });
 
-    // Create a new RTCPeerConnection instance with the provided ICE servers
+    // Create a new RTCPeerConnection instance with ICE servers configuration
     peerConnectionRef.current = new RTCPeerConnection(ICE_SERVERS);
 
     // Send any ICE candidates to the peer
@@ -75,7 +76,7 @@ const useVideoChat = () => {
         if (localVideoRef.current) {
           localVideoRef.current.srcObject = stream;
         }
-        // Add tracks to the RTCPeerConnection
+        localStreamRef.current = stream;
         stream.getTracks().forEach((track) => {
           if (peerConnectionRef.current) {
             peerConnectionRef.current.addTrack(track, stream);
@@ -109,8 +110,31 @@ const useVideoChat = () => {
     }
   };
 
-  // Return the video element references and the createOffer function
-  return { localVideoRef, remoteVideoRef, createOffer };
+  // Function to stop the video chat
+  const stopChat = () => {
+    // Stop local media tracks
+    if (localStreamRef.current) {
+      localStreamRef.current.getTracks().forEach(track => track.stop());
+    }
+
+    // Stop remote media stream
+    if (remoteVideoRef.current) {
+      remoteVideoRef.current.srcObject = null;
+    }
+
+    // Close peer connection
+    if (peerConnectionRef.current) {
+      peerConnectionRef.current.close();
+    }
+
+    // Disconnect the socket
+    if (socketRef.current) {
+      socketRef.current.disconnect();
+    }
+  };
+
+  // Return video element references and functions to control the chat
+  return { localVideoRef, remoteVideoRef, createOffer, stopChat };
 };
 
 export default useVideoChat;
