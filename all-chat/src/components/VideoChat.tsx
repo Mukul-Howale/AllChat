@@ -1,60 +1,57 @@
-import React, { useState } from 'react';
+import React, { useState, useRef } from 'react';
+import { io, Socket } from 'socket.io-client'; // Import Socket from 'socket.io-client'
 import useVideoChat from '../hooks/useVideoChat';
 
 const VideoChat: React.FC = () => {
-  // Custom hook to handle WebRTC and Socket.io logic
-  const { localVideoRef, remoteVideoRef, createOffer, stopChat } = useVideoChat();
-  // State to track if the chat is active
-  const [isChatActive, setIsChatActive] = useState(false);
+  const [isChatActive, setIsChatActive] = useState(false); // State to track if the chat is active
+  const socketRef = useRef<Socket | null>(null); // Ref to hold the Socket.io connection
+  const { localVideoRef, remoteVideoRef, initializePeerConnection, startChat, stopChat } = useVideoChat(socketRef);
 
   // Handler function to start the video chat
   const handleStartChat = async () => {
-    await createOffer(); // Create an offer to start the chat
-    setIsChatActive(true); // Set chat state to active
+    try {
+      // Initialize Socket.io connection only when the Start Chat button is clicked
+      socketRef.current = io('http://localhost:3000');
+
+      // Initialize WebRTC peer connection
+      initializePeerConnection();
+
+      // Start the chat (exchange offers/answers)
+      await startChat();
+      setIsChatActive(true); // Update state to reflect chat status
+    } catch (error) {
+      console.error('Error starting chat:', error);
+    }
   };
 
   // Handler function to stop the video chat
   const handleStopChat = () => {
-    stopChat(); // Stop the chat by calling the stopChat function from the custom hook
-    setIsChatActive(false); // Set chat state to inactive
+    if (socketRef.current) {
+      socketRef.current.disconnect(); // Disconnect the Socket.io connection
+    }
+    stopChat(); // Stop the WebRTC connection and video streams
+    setIsChatActive(false); // Update state to reflect chat status
   };
 
   return (
     <div className="flex flex-col items-center justify-center h-screen bg-gray-900">
       <div className="w-full max-w-4xl grid grid-cols-2 gap-4">
-        {/* Container for local video */}
+        {/* Local Video */}
         <div className="bg-black flex justify-center items-center rounded-lg p-4">
-          <video
-            ref={localVideoRef} // Reference to the local video stream
-            className="w-full h-auto rounded-lg"
-            autoPlay
-            muted
-            playsInline
-          />
+          <video ref={localVideoRef} className="w-full h-auto rounded-lg" autoPlay muted playsInline />
         </div>
-        {/* Container for remote video */}
+        {/* Remote Video */}
         <div className="bg-black flex justify-center items-center rounded-lg p-4">
-          <video
-            ref={remoteVideoRef} // Reference to the remote video stream
-            className="w-full h-auto rounded-lg"
-            autoPlay
-            playsInline
-          />
+          <video ref={remoteVideoRef} className="w-full h-auto rounded-lg" autoPlay playsInline />
         </div>
       </div>
-      {/* Conditionally render buttons based on chat state */}
+      {/* Start/Stop Chat Buttons */}
       {!isChatActive ? (
-        <button
-          className="mt-4 px-6 py-2 bg-blue-600 text-white rounded-lg"
-          onClick={handleStartChat} // Start chat on click
-        >
+        <button className="mt-4 px-6 py-2 bg-blue-600 text-white rounded-lg" onClick={handleStartChat}>
           Start Chat
         </button>
       ) : (
-        <button
-          className="mt-4 px-6 py-2 bg-red-600 text-white rounded-lg"
-          onClick={handleStopChat} // Stop chat on click
-        >
+        <button className="mt-4 px-6 py-2 bg-red-600 text-white rounded-lg" onClick={handleStopChat}>
           Stop Chat
         </button>
       )}
