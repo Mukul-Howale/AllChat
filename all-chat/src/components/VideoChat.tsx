@@ -1,101 +1,107 @@
 import React, { useState, useRef, useEffect, RefObject } from 'react';
 import { io, Socket } from 'socket.io-client';
 import useVideoChat from '../hooks/useVideoChat';
+import Header from './Header';
+import Footer from './Footer';
+import VideoGrid from './VideoGrid';
+import ChatControls from './ChatControls';
+import TextChat from './TextChat';
 
 const VideoChat: React.FC = () => {
-  const [isChatActive, setIsChatActive] = useState(false); // Track if the chat is active
-  const [groupSize, setGroupSize] = useState<number | 'any'>(2); // Track selected group size (default is 2)
+  const [isChatActive, setIsChatActive] = useState(false);
+  const [groupSize, setGroupSize] = useState<number | 'any'>(2);
+  const [remoteVideos, setRemoteVideos] = useState<RefObject<HTMLVideoElement>[]>([]);
   const socketRef = useRef<Socket | null>(null);
+  const [isWaiting, setIsWaiting] = useState(false);
+  const [messages, setMessages] = useState<{ text: string; sender: string }[]>([]);
 
-  // Update the hook to match the new type of remoteVideoRefs
   const { localVideoRef, remoteVideoRefs, initializePeerConnection, startChat, stopChat, nextChat } = useVideoChat(socketRef, groupSize);
 
-  // Update this useEffect hook
   useEffect(() => {
-    if (groupSize !== 'any') {
-      const newRefs: RefObject<HTMLVideoElement>[] = Array.from({ length: groupSize - 1 }, () => React.createRef<HTMLVideoElement>());
-      remoteVideoRefs.current = newRefs;
+    if (isChatActive) {
+      updateRemoteVideos();
     }
-  }, [groupSize]);
+  }, [groupSize, isChatActive]);
 
-  // Handler function for starting the chat
+  const updateRemoteVideos = () => {
+    const peerCount = groupSize === 'any' ? 1 : groupSize - 1;
+    setRemoteVideos(remoteVideoRefs.current.slice(0, peerCount));
+  };
+
   const handleStartChat = async () => {
     try {
-      socketRef.current = io('http://localhost:3000'); // Initialize Socket.io connection
-      initializePeerConnection(); // Initialize WebRTC peer connection
-      await startChat(); // Start the chat (offer/answer exchange)
-      setIsChatActive(true); // Set chat status to active
+      console.log('Starting chat...');
+      socketRef.current = io('http://localhost:3000');
+      initializePeerConnection();
+      await startChat();
+      console.log('Chat started successfully');
+      setIsChatActive(true);
+      setIsWaiting(true);
+      // Simulating wait time for others to join
+      setTimeout(() => {
+        setIsWaiting(false);
+        updateRemoteVideos();
+      }, 5000); // Adjust time as needed
     } catch (error) {
       console.error('Error starting chat:', error);
     }
   };
 
-  // Handler function for stopping the chat
   const handleStopChat = () => {
     if (socketRef.current) {
-      socketRef.current.disconnect(); // Disconnect Socket.io connection
+      socketRef.current.disconnect();
     }
-    stopChat(); // Stop WebRTC and clear streams
-    setIsChatActive(false); // Set chat status to inactive
+    stopChat();
+    setIsChatActive(false);
+    setRemoteVideos([]);
   };
 
-  // Handler function for moving to the next chat group
   const handleNextChat = async () => {
     if (socketRef.current) {
-      socketRef.current.emit('leave-room'); // Leave the current chat group
-      await nextChat(); // Start a new chat group
+      socketRef.current.emit('leave-room');
+      await nextChat();
+      updateRemoteVideos();
     }
+  };
+
+  const handleSendMessage = (message: string) => {
+    const newMessage = { text: message, sender: 'You' };
+    setMessages([...messages, newMessage]);
+    // Here you would also send the message to other participants
+    // For example: socket.emit('send-message', newMessage);
   };
 
   return (
-    <div className="flex flex-col items-center justify-center h-screen bg-gray-900">
-      <div className={`w-full max-w-4xl grid gap-4 ${
-        groupSize === 'any' ? 'grid-cols-2' :
-        groupSize === 2 ? 'grid-cols-2' :
-        groupSize === 3 ? 'grid-cols-3' :
-        'grid-cols-2 md:grid-cols-4'
-      }`}>
-        {/* Local Video */}
-        <div className="bg-black flex justify-center items-center rounded-lg p-4">
-          <video ref={localVideoRef} className="w-full h-auto rounded-lg" autoPlay muted playsInline />
-        </div>
-        {/* Remote Videos */}
-        {remoteVideoRefs.current.map((ref: RefObject<HTMLVideoElement>, index: number) => (
-          <div key={index} className="bg-black flex justify-center items-center rounded-lg p-4">
-            <video ref={ref} className="w-full h-auto rounded-lg" autoPlay playsInline />
+    <div className="flex flex-col min-h-screen bg-gray-900">
+      <Header />
+      <main className="flex-grow flex items-center justify-center p-4">
+        <div className="flex w-full max-w-6xl">
+          <div className="w-2/3 pr-4">
+            <VideoGrid 
+              groupSize={groupSize} 
+              localVideoRef={localVideoRef} 
+              remoteVideos={remoteVideos} 
+              isChatActive={isChatActive}
+            />
+            <ChatControls
+              groupSize={groupSize}
+              setGroupSize={setGroupSize}
+              isChatActive={isChatActive}
+              handleStartChat={handleStartChat}
+              handleStopChat={handleStopChat}
+              handleNextChat={handleNextChat}
+            />
           </div>
-        ))}
-      </div>
-      <div className="mt-4 flex space-x-4">
-        {/* Group Size Selection */}
-        <select
-          className="px-4 py-2 bg-gray-700 text-white rounded-lg"
-          value={groupSize}
-          onChange={(e) => setGroupSize(e.target.value === 'any' ? 'any' : parseInt(e.target.value))}
-          disabled={isChatActive} // Disable selection while chat is active
-        >
-          <option value={2}>2 People</option>
-          <option value={3}>3 People</option>
-          <option value={4}>4 People</option>
-          <option value="any">Any</option>
-        </select>
-        {/* Start/Stop Chat Buttons */}
-        {!isChatActive ? (
-          <button className="px-6 py-2 bg-blue-600 text-white rounded-lg" onClick={handleStartChat}>
-            Start Chat
-          </button>
-        ) : (
-          <button className="px-6 py-2 bg-red-600 text-white rounded-lg" onClick={handleStopChat}>
-            Stop Chat
-          </button>
-        )}
-        {/* Next Button (Only visible if chat is active) */}
-        {isChatActive && (
-          <button className="px-6 py-2 bg-yellow-600 text-white rounded-lg" onClick={handleNextChat}>
-            Next
-          </button>
-        )}
-      </div>
+          <div className="w-1/3 bg-gray-200 p-4 rounded-lg">
+            <TextChat
+              isChatActive={isChatActive}
+              onSendMessage={handleSendMessage}
+              messages={messages}
+            />
+          </div>
+        </div>
+      </main>
+      <Footer />
     </div>
   );
 };
