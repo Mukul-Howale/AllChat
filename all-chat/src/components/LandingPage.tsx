@@ -42,7 +42,7 @@ export default function LandingPage() {
             </div>
           </div>
         </section>
-        <section id="features" className="w-full py-12 md:py-24 lg:py-32 border-b border-gray-700">
+        <section id="features" className="bg-gray-700 w-full py-12 md:py-24 lg:py-32 border-b border-gray-700">
           <div className="container px-4 md:px-6">
             <h2 className="text-3xl font-bold tracking-tighter sm:text-5xl text-center mb-12">Why Choose AllChat?</h2>
             <div className="grid gap-10 sm:grid-cols-2 md:grid-cols-3">
@@ -64,7 +64,7 @@ export default function LandingPage() {
             </div>
           </div>
         </section>
-        <section id="how-it-works" className="w-full py-12 md:py-24 lg:py-32 bg-gray-700 border-b border-gray-600">
+        <section id="how-it-works" className="w-full py-12 md:py-24 lg:py-32 border-b border-gray-600">
           <div className="container px-4 md:px-6">
             <h2 className="text-3xl font-bold tracking-tighter sm:text-5xl text-center mb-12">How It Works</h2>
             <div className="grid gap-8 md:grid-cols-3">

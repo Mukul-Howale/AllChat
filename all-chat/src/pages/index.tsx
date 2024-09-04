@@ -6,8 +6,8 @@ import VideoChat from '../components/VideoChat';
 const Home: React.FC = () => {
   return (
     <div>
-      <LandingPage />
-      {/* <VideoChat /> */}
+      {/* <LandingPage /> */}
+      <VideoChat />
     </div>
   );
 };

@@ -34,7 +34,7 @@ const ChatControls: React.FC<ChatControlsProps> = ({
   };
 
   return (
-    <div className="mt-4 flex space-x-4">
+    <div className="flex justify-center items-center space-x-4">
       <div className="flex items-center space-x-2">
         <Button
           onClick={handleDecrease}
@@ -44,7 +44,7 @@ const ChatControls: React.FC<ChatControlsProps> = ({
         >
           -
         </Button>
-        <span className="text-xl font-semibold">
+        <span className="text-xl font-semibold text-white">
           <Users className="inline mr-2" />
           {groupSize === 'any' ? 'Any' : `${groupSize} People`}
         </span>

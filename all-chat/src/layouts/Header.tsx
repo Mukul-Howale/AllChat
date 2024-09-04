@@ -3,7 +3,7 @@ import Link from 'next/link';
 import { MessageSquare } from 'lucide-react';
 
 const Header: React.FC = () => (
-  <header className="bg-gray-800 text-white px-4 lg:px-6 h-14 flex items-center border-b border-gray-700">
+  <header className="text-white px-4 lg:px-6 h-14 flex items-center border-b border-gray-700">
     <Link className="flex items-center justify-center" href="#">
       <MessageSquare className="h-6 w-6" />
       <span className="ml-2 text-2xl font-bold">AllChat</span>

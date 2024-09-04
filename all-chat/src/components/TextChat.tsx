@@ -26,7 +26,7 @@ const TextChat: React.FC<TextChatProps> = ({ isChatActive, onSendMessage, messag
 
   return (
     <div className="w-full h-full flex flex-col">
-      <h3 className="text-xl font-semibold mb-4">Chat Window</h3>
+      <h3 className="text-xl font-semibold mb-4 text-white">Chat Window</h3>
       <div className="flex-grow overflow-y-auto mb-4 bg-white rounded p-4">
         {messages.map((msg, index) => (
           <div key={index} className="mb-2">
