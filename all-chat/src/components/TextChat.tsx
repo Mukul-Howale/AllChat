@@ -2,51 +2,48 @@ import React, { useState } from 'react';
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 
-interface Message {
-  text: string;
-  sender: string;
-}
-
 interface TextChatProps {
   isChatActive: boolean;
   onSendMessage: (message: string) => void;
-  messages: Message[];
+  messages: { text: string; sender: string }[];
 }
 
 const TextChat: React.FC<TextChatProps> = ({ isChatActive, onSendMessage, messages }) => {
-  const [inputMessage, setInputMessage] = useState('');
+  const [message, setMessage] = useState('');
 
-  const handleSendMessage = (e: React.FormEvent) => {
-    e.preventDefault();
-    if (inputMessage.trim()) {
-      onSendMessage(inputMessage);
-      setInputMessage('');
+  const handleSend = () => {
+    if (message.trim()) {
+      onSendMessage(message);
+      setMessage('');
     }
   };
 
   return (
-    <div className="w-full h-full flex flex-col">
-      <h3 className="text-xl font-semibold mb-4 text-white">Chat Window</h3>
-      <div className="flex-grow overflow-y-auto mb-4 bg-white rounded p-4">
+    <div className="flex flex-col h-full text-white">
+      <div className="flex-grow overflow-y-auto p-4 space-y-4">
         {messages.map((msg, index) => (
-          <div key={index} className="mb-2">
-            <span className="font-semibold">{msg.sender}: </span>
-            {msg.text}
+          <div key={index} className={`${msg.sender === 'You' ? 'text-right' : 'text-left'}`}>
+            <span className="inline-block bg-gray-700 rounded-lg px-3 py-2 text-sm">
+              <strong>{msg.sender}: </strong>{msg.text}
+            </span>
           </div>
         ))}
       </div>
-      <form onSubmit={handleSendMessage} className="flex space-x-2">
-        <Input
-          type="text"
-          placeholder="Type a message..."
-          value={inputMessage}
-          onChange={(e) => setInputMessage(e.target.value)}
-          disabled={!isChatActive}
-        />
-        <Button type="submit" disabled={!isChatActive}>
-          Send
-        </Button>
-      </form>
+      <div className="p-4 border-t border-gray-700">
+        <div className="flex space-x-2">
+          <Input
+            type="text"
+            value={message}
+            onChange={(e) => setMessage(e.target.value)}
+            placeholder="Type a message..."
+            disabled={!isChatActive}
+            className="flex-grow bg-gray-700 text-white placeholder-gray-400 border-gray-600 focus:border-blue-500"
+          />
+          <Button onClick={handleSend} disabled={!isChatActive}>
+            Send
+          </Button>
+        </div>
+      </div>
     </div>
   );
 };
