@@ -3,8 +3,8 @@ import { Clock } from 'lucide-react';
 import VideoGrid from './VideoGrid';
 import ChatControls from './ChatControls';
 import TextChat from './TextChat';
-import Header from './Header';
-import Footer from './Footer';
+import Header from '../layouts/Header';
+import Footer from '../layouts/Footer';
 
 const VideoChat: React.FC = () => {
   const [groupSize, setGroupSize] = useState<number | 'any'>(2);
@@ -92,7 +92,6 @@ const VideoChat: React.FC = () => {
 
   return (
     <div className="flex flex-col h-screen bg-gray-900">
-      <Header />
       <main className="flex-grow flex p-4 space-x-4">
         <div className="flex flex-col w-3/4 space-y-4">
           <div className="flex-grow bg-gray-800 rounded-lg overflow-hidden">
@@ -120,7 +119,6 @@ const VideoChat: React.FC = () => {
           />
         </div>
       </main>
-      <Footer />
     </div>
   );
 };
