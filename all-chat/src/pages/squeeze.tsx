@@ -1,28 +1,21 @@
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
-import { MessageSquare, Users, Shield, Zap } from "lucide-react"
+import { Users, Shield, Zap } from "lucide-react"
 import Link from "next/link"
+import { useRouter } from 'next/router'
+import Header from '../layouts/Header'
+import Footer from '../layouts/Footer'
 
 export default function LandingPage() {
+  const router = useRouter();
+
+  const handleStartChatting = () => {
+    router.push('/video-chat');
+  };
+
   return (
     <div className="flex flex-col min-h-screen bg-gray-800 text-white">
-      <header className="px-4 lg:px-6 h-14 flex items-center border-b border-gray-700">
-        <Link className="flex items-center justify-center" href="#">
-          <MessageSquare className="h-6 w-6" />
-          <span className="ml-2 text-2xl font-bold">AllChat</span>
-        </Link>
-        <nav className="ml-auto flex gap-4 sm:gap-6">
-          <Link className="text-sm font-medium hover:underline underline-offset-4" href="#features">
-            Features
-          </Link>
-          <Link className="text-sm font-medium hover:underline underline-offset-4" href="#how-it-works">
-            How It Works
-          </Link>
-          <Link className="text-sm font-medium hover:underline underline-offset-4" href="#about">
-            About
-          </Link>
-        </nav>
-      </header>
+      <Header />
       <main className="flex-1">
         <section className="w-full py-12 md:py-24 lg:py-32 xl:py-48 border-b border-gray-700">
           <div className="container px-4 md:px-6">
@@ -36,8 +29,8 @@ export default function LandingPage() {
                 </p>
               </div>
               <div className="space-x-4">
-                <Button>Start Chatting</Button>
-                <Button variant="outline">Learn More</Button>
+                <Button onClick={handleStartChatting}>Start Chatting</Button>
+                <Button>Learn More</Button>
               </div>
             </div>
           </div>
@@ -86,7 +79,7 @@ export default function LandingPage() {
             </div>
           </div>
         </section>
-        <section id="cta" className="w-full py-12 md:py-24 lg:py-32">
+        <section id="cta" className="bg-gray-700 w-full py-12 md:py-24 lg:py-32">
           <div className="container px-4 md:px-6">
             <div className="flex flex-col items-center space-y-4 text-center">
               <div className="space-y-2">
@@ -113,17 +106,7 @@ export default function LandingPage() {
           </div>
         </section>
       </main>
-      <footer className="flex flex-col gap-2 sm:flex-row py-6 w-full shrink-0 items-center px-4 md:px-6 border-t border-gray-700">
-        <p className="text-xs text-gray-400">© 2024 AllChat. All rights reserved.</p>
-        <nav className="sm:ml-auto flex gap-4 sm:gap-6">
-          <Link className="text-xs hover:underline underline-offset-4" href="#">
-            Terms of Service
-          </Link>
-          <Link className="text-xs hover:underline underline-offset-4" href="#">
-            Privacy
-          </Link>
-        </nav>
-      </footer>
+      <Footer />
     </div>
   )
 }

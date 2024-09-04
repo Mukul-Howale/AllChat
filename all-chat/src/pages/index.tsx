@@ -1,13 +1,11 @@
 // The main entry page of the application, rendering the VideoChat component.
 import React from 'react';
-import LandingPage from '../components/LandingPage';
-import VideoChat from '../components/VideoChat';
+import LandingPage from './squeeze';
 
 const Home: React.FC = () => {
   return (
     <div>
-      {/* <LandingPage /> */}
-      <VideoChat />
+      <LandingPage />
     </div>
   );
 };

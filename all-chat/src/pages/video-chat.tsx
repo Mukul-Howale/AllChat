@@ -1,9 +1,10 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { Clock } from 'lucide-react';
-import VideoGrid from './VideoGrid';
-import ChatControls from './ChatControls';
-import TextChat from './TextChat';
-import MediaControls from './MediaControls';
+import VideoGrid from '../components/VideoGrid';
+import ChatControls from '../components/ChatControls';
+import TextChat from '../components/TextChat';
+import MediaControls from '../components/MediaControls';
+import Header from '../layouts/Header';
 
 const VideoChat: React.FC = () => {
   const [groupSize, setGroupSize] = useState<number | 'any'>(2);
@@ -114,23 +115,20 @@ const VideoChat: React.FC = () => {
   };
 
   return (
-    <div className="flex h-screen bg-gray-900 overflow-hidden">
-      <div className="flex flex-col w-3/4 p-4">
-        <div className="flex-grow bg-gray-800 rounded-lg overflow-hidden">
-          <div className="w-full h-full">
+    <div className="flex flex-col h-screen bg-gray-900">
+      <Header hideNavigation={true} />
+      <div className="flex flex-grow overflow-hidden p-4">
+        <div className="flex flex-col w-3/4 pr-4">
+          <div className="flex-grow bg-gray-800 rounded-lg overflow-hidden mb-4">
             {renderVideoArea()}
           </div>
-        </div>
-        <div className="mt-4 flex items-center">
-          <div className="w-1/4">
+          <div className="flex items-center justify-between">
             <MediaControls
               isVideoOn={isVideoOn}
               isAudioOn={isAudioOn}
               toggleVideo={toggleVideo}
               toggleAudio={toggleAudio}
             />
-          </div>
-          <div className="w-1/2 flex justify-center">
             <ChatControls
               groupSize={groupSize}
               setGroupSize={setGroupSize}
@@ -140,16 +138,18 @@ const VideoChat: React.FC = () => {
               handleStopChat={handleStopChat}
               handleNextChat={handleNextChat}
             />
+            <div className="w-1/4"></div> {/* Spacer for alignment */}
           </div>
-          <div className="w-1/4"></div>
         </div>
-      </div>
-      <div className="w-1/4 bg-gray-800 p-4">
-        <TextChat
-          isChatActive={isChatActive}
-          onSendMessage={handleSendMessage}
-          messages={messages}
-        />
+        <div className="w-1/4 flex flex-col">
+          <div className="flex-grow bg-gray-800 rounded-lg overflow-hidden">
+            <TextChat
+              isChatActive={isChatActive}
+              onSendMessage={handleSendMessage}
+              messages={messages}
+            />
+          </div>
+        </div>
       </div>
     </div>
   );
