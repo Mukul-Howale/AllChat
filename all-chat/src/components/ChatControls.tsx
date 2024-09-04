@@ -1,11 +1,12 @@
-import React, { useState } from 'react';
+import React from 'react';
 import { Button } from "@/components/ui/button"
-import { Users } from 'lucide-react'; // Add this import for the Users icon
+import { Users } from 'lucide-react';
 
 interface ChatControlsProps {
   groupSize: number | 'any';
   setGroupSize: (size: number | 'any') => void;
   isChatActive: boolean;
+  isWaiting: boolean; // New prop
   handleStartChat: () => void;
   handleStopChat: () => void;
   handleNextChat: () => void;
@@ -15,54 +16,60 @@ const ChatControls: React.FC<ChatControlsProps> = ({
   groupSize,
   setGroupSize,
   isChatActive,
+  isWaiting, // New prop
   handleStartChat,
   handleStopChat,
   handleNextChat
 }) => {
-  const [peopleCount, setPeopleCount] = useState(2);
+  const handleDecrease = () => {
+    if (typeof groupSize === 'number' && groupSize > 2) {
+      setGroupSize(groupSize - 1);
+    }
+  };
+
+  const handleIncrease = () => {
+    if (typeof groupSize === 'number' && groupSize < 4) {
+      setGroupSize(groupSize + 1);
+    }
+  };
 
   return (
     <div className="mt-4 flex space-x-4">
-      <select
-        className="px-4 py-2 bg-gray-700 text-white rounded-lg"
-        value={groupSize}
-        onChange={(e) => setGroupSize(e.target.value === 'any' ? 'any' : parseInt(e.target.value))}
-        disabled={isChatActive}
-      >
-        <option value={2}>2 People</option>
-        <option value={3}>3 People</option>
-        <option value={4}>4 People</option>
-        <option value="any">Any</option>
-      </select>
-      <button 
-        className={`px-6 py-2 text-white rounded-lg ${
-          isChatActive ? 'bg-red-600' : 'bg-blue-600'
+      <div className="flex items-center space-x-2">
+        <Button
+          onClick={handleDecrease}
+          disabled={isChatActive || isWaiting || groupSize === 2}
+          variant="outline"
+          className="bg-white text-black"
+        >
+          -
+        </Button>
+        <span className="text-xl font-semibold">
+          <Users className="inline mr-2" />
+          {groupSize === 'any' ? 'Any' : `${groupSize} People`}
+        </span>
+        <Button
+          onClick={handleIncrease}
+          disabled={isChatActive || isWaiting || groupSize === 4}
+          variant="outline"
+          className="bg-white text-black"
+        >
+          +
+        </Button>
+      </div>
+      <Button 
+        className={`px-6 py-2 text-black ${
+          isChatActive || isWaiting ? 'bg-white' : 'bg-white'
         }`}
-        onClick={isChatActive ? handleStopChat : handleStartChat}
+        onClick={isChatActive || isWaiting ? handleStopChat : handleStartChat}
       >
-        {isChatActive ? 'Stop Chat' : 'Start Chat'}
-      </button>
+        {isChatActive ? 'Stop Chat' : isWaiting ? 'Cancel' : 'Start Chat'}
+      </Button>
       {isChatActive && (
-        <button className="px-6 py-2 bg-yellow-600 text-white rounded-lg" onClick={handleNextChat}>
+        <Button className="px-6 py-2 bg-white text-black" onClick={handleNextChat}>
           Next
-        </button>
+        </Button>
       )}
-      <Button
-        onClick={() => setPeopleCount(Math.max(2, peopleCount - 1))}
-        disabled={peopleCount === 2}
-      >
-        -
-      </Button>
-      <span className="text-xl font-semibold">
-        <Users className="inline mr-2" />
-        {peopleCount} People
-      </span>
-      <Button
-        onClick={() => setPeopleCount(Math.min(4, peopleCount + 1))}
-        disabled={peopleCount === 4}
-      >
-        +
-      </Button>
     </div>
   );
 };

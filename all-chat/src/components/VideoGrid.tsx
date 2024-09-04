@@ -1,61 +1,45 @@
-import React, { RefObject } from 'react';
+import React from 'react';
+import { User } from 'lucide-react';
 
 interface VideoGridProps {
   groupSize: number | 'any';
-  localVideoRef: RefObject<HTMLVideoElement>;
-  remoteVideos: RefObject<HTMLVideoElement>[];
+  localVideoRef: React.RefObject<HTMLVideoElement>;
+  remoteVideos: React.RefObject<HTMLVideoElement>[];
   isChatActive: boolean;
 }
 
 const VideoGrid: React.FC<VideoGridProps> = ({ groupSize, localVideoRef, remoteVideos, isChatActive }) => {
-  console.log('VideoGrid render:', { groupSize, isChatActive, remoteVideosCount: remoteVideos.length });
+  const totalWindows = typeof groupSize === 'number' ? groupSize : 2;
   
-  const renderParticipantWindows = () => {
-    const size = groupSize === 'any' ? remoteVideos.length + 1 : groupSize;
-    return Array.from({ length: size }, (_, index) => (
-      <div key={index} className="bg-white rounded-lg shadow-md p-4 flex flex-col items-center">
-        <div className="w-16 h-16 bg-gray-200 rounded-full flex items-center justify-center mb-2">
-          {index === 0 ? (
-            <video ref={localVideoRef} className="w-full h-full object-cover rounded-full" autoPlay muted playsInline />
-          ) : (
-            <video ref={remoteVideos[index - 1]} className="w-full h-full object-cover rounded-full" autoPlay playsInline />
-          )}
-        </div>
-        <span className="text-sm font-medium">
-          {index === 0 ? 'You' : `Person ${index + 1}`}
-        </span>
-      </div>
-    ));
-  };
+  let gridClass = 'grid-cols-1';
+  if (totalWindows === 2) {
+    gridClass = 'grid-cols-2';
+  } else if (totalWindows > 2) {
+    gridClass = 'grid-cols-2 grid-rows-2';
+  }
+
+  console.log('VideoGrid render - isChatActive:', isChatActive, 'totalWindows:', totalWindows);
 
   return (
-    <div className="w-full max-w-4xl bg-gray-800 rounded-lg p-4 shadow-lg">
-      {isChatActive ? (
-        <div className={`grid gap-4 ${
-          groupSize === 'any' ? 'grid-cols-2' :
-          groupSize === 2 ? 'grid-cols-2' :
-          groupSize === 3 ? 'grid-cols-3' :
-          'grid-cols-2 md:grid-cols-4'
-        }`}>
-          {/* Local Video */}
-          <div className="bg-black flex justify-center items-center rounded-lg overflow-hidden">
+    <div className={`grid ${gridClass} gap-2 w-full h-full`}>
+      {Array.from({ length: totalWindows }, (_, index) => (
+        <div key={index} className="bg-gray-800 rounded-lg overflow-hidden relative">
+          {index === 0 ? (
             <video ref={localVideoRef} className="w-full h-full object-cover" autoPlay muted playsInline />
-          </div>
-          {/* Remote Videos */}
-          {remoteVideos.map((ref, index) => (
-            <div key={index} className="bg-black flex justify-center items-center rounded-lg overflow-hidden">
-              <video ref={ref} className="w-full h-full object-cover" autoPlay playsInline />
-            </div>
-          ))}
-          <div className="grid grid-cols-2 gap-4">
-            {renderParticipantWindows()}
+          ) : (
+            isChatActive && remoteVideos[index - 1] ? (
+              <video ref={remoteVideos[index - 1]} className="w-full h-full object-cover" autoPlay playsInline />
+            ) : (
+              <div className="w-full h-full flex items-center justify-center bg-gray-700">
+                <User className="w-1/4 h-1/4 text-gray-400" />
+              </div>
+            )
+          )}
+          <div className="absolute bottom-2 left-2 bg-black bg-opacity-50 px-2 py-1 rounded text-white text-sm">
+            {index === 0 ? 'You' : `Person ${index + 1}`}
           </div>
         </div>
-      ) : (
-        <div className="flex justify-center items-center h-64 text-white">
-          <p className="text-xl">Start a chat to begin random video call</p>
-        </div>
-      )}
+      ))}
     </div>
   );
 };
