@@ -5,6 +5,7 @@ import ChatControls from '../components/ChatControls';
 import TextChat from '../components/TextChat';
 import MediaControls from '../components/MediaControls';
 import Header from '../layouts/Header';
+import { getUser } from '@/utils/auth';
 
 const VideoChat: React.FC = () => {
   const [groupSize, setGroupSize] = useState<number | 'any'>(2);
@@ -114,9 +115,18 @@ const VideoChat: React.FC = () => {
     }
   };
 
+  const [user, setUser] = useState<{ name: string; email: string; username: string } | null>(null);
+
+  useEffect(() => {
+    const authenticatedUser = getUser();
+    if (authenticatedUser) {
+      setUser({ name: authenticatedUser.name, email: authenticatedUser.email, username: authenticatedUser.username });
+    }
+  }, []);
+
   return (
     <div className="flex flex-col h-screen bg-gray-900">
-      <Header hideNavigation={true} />
+      <Header user={user} />
       <div className="flex flex-grow overflow-hidden p-4">
         <div className="flex flex-col w-3/4 pr-4">
           <div className="flex-grow bg-gray-800 rounded-lg overflow-hidden mb-4">

@@ -1,29 +1,77 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card"
-import { Separator } from "@/components/ui/separator"
 import Link from 'next/link'
 import Header from '@/layouts/Header'
+import { setUser, getUser, removeUser, isAuthenticated } from '@/utils/auth'
+import { hashPassword, comparePassword } from '@/utils/crypt'
+import { useRouter } from 'next/router'
+import { v4 as uuidv4 } from 'uuid';
 
 export default function AuthPage() {
   const [isSignUp, setIsSignUp] = useState(true)
+  const [name, setName] = useState('')
+  const [email, setEmail] = useState('')
+  const [username, setUsername] = useState('')
+  const [password, setPassword] = useState('')
+  const router = useRouter()
+  const [user, setUserState] = useState<{ name: string; email: string; username: string } | null>(null)
 
-  const handleSubmit = (event: React.FormEvent<HTMLFormElement>) => {
+  useEffect(() => {
+    if (isAuthenticated()) {
+      const authenticatedUser = getUser()
+      if (authenticatedUser) {
+        setUserState({ name: authenticatedUser.name, email: authenticatedUser.email, username: authenticatedUser.username })
+      }
+    }
+  }, [])
+
+  const handleSubmit = async (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault()
-    // Here you would typically handle the form submission
-    console.log('Form submitted')
+    if (isSignUp) {
+      const passwordHash = await hashPassword(password)
+      const newUser = { id: uuidv4(), name, email, username, passwordHash }
+      setUser(newUser)
+      setUserState({ name, email, username })
+      console.log('User signed up:', newUser)
+    } else {
+      const storedUser = getUser()
+      if (storedUser && storedUser.email === email) {
+        const isPasswordValid = await comparePassword(password, storedUser.passwordHash)
+        if (isPasswordValid) {
+          setUserState({ name: storedUser.name, email: storedUser.email, username: storedUser.username })
+          console.log('User logged in:', storedUser)
+        } else {
+          console.log('Login failed: Incorrect password')
+          return
+        }
+      } else {
+        console.log('Login failed: User not found')
+        return
+      }
+    }
+    router.push('/video-chat')
   }
 
   const handleGoogleAuth = () => {
-    // Here you would typically initiate Google authentication
-    console.log('Google auth initiated')
+    const googleUser = { 
+      id: uuidv4(), 
+      name: 'Google User', 
+      email: 'google@example.com', 
+      username: 'googleuser',
+      passwordHash: '' 
+    }
+    setUser(googleUser)
+    setUserState({ name: googleUser.name, email: googleUser.email, username: googleUser.username })
+    console.log('Google auth successful:', googleUser)
+    router.push('/video-chat')
   }
 
   return (
     <div className="flex flex-col min-h-screen bg-gray-800 text-white">
-      <Header hideNavigation={true} />
+      <Header hideNavigation={false} user={user} />
       <div className="flex-grow flex items-center justify-center p-4">
         <Card className="w-full max-w-[800px] bg-gray-700 border-gray-600 flex flex-col md:flex-row">
           <div className="md:w-1/3 p-6 flex flex-col justify-center items-center border-r border-gray-600">
@@ -33,7 +81,6 @@ export default function AuthPage() {
             >
               {isSignUp ? 'Sign up' : 'Continue'} with Google
             </Button>
-            {/* Add more social login options here if needed */}
           </div>
           <div className="md:w-2/3 p-6">
             <CardHeader className="p-0 mb-4">
@@ -50,21 +97,49 @@ export default function AuthPage() {
                   <>
                     <div className="space-y-1">
                       <Label htmlFor="name" className="text-white text-sm">Name</Label>
-                      <Input id="name" type="text" required className="bg-gray-600 text-white border-gray-500 h-10 text-sm" />
+                      <Input 
+                        id="name" 
+                        type="text" 
+                        required 
+                        className="bg-gray-600 text-white border-gray-500 h-10 text-sm" 
+                        value={name}
+                        onChange={(e) => setName(e.target.value)}
+                      />
                     </div>
                     <div className="space-y-1">
                       <Label htmlFor="username" className="text-white text-sm">Username</Label>
-                      <Input id="username" type="text" required className="bg-gray-600 text-white border-gray-500 h-10 text-sm" />
+                      <Input 
+                        id="username" 
+                        type="text" 
+                        required 
+                        className="bg-gray-600 text-white border-gray-500 h-10 text-sm" 
+                        value={username}
+                        onChange={(e) => setUsername(e.target.value)}
+                      />
                     </div>
                   </>
                 )}
                 <div className="space-y-1">
                   <Label htmlFor="email" className="text-white text-sm">Email</Label>
-                  <Input id="email" type="email" required className="bg-gray-600 text-white border-gray-500 h-10 text-sm" />
+                  <Input 
+                    id="email" 
+                    type="email" 
+                    required 
+                    className="bg-gray-600 text-white border-gray-500 h-10 text-sm" 
+                    value={email}
+                    onChange={(e) => setEmail(e.target.value)}
+                  />
                 </div>
                 <div className="space-y-1">
                   <Label htmlFor="password" className="text-white text-sm">Password</Label>
-                  <Input id="password" type="password" required className="bg-gray-600 text-white border-gray-500 h-10 text-sm" />
+                  <Input 
+                    id="password" 
+                    type="password" 
+                    required 
+                    className="bg-gray-600 text-white border-gray-500 h-10 text-sm" 
+                    value={password}
+                    onChange={(e) => setPassword(e.target.value)}
+                  />
                 </div>
                 {isSignUp && (
                   <p className="text-xs text-gray-300">
@@ -88,7 +163,8 @@ export default function AuthPage() {
               <Button 
                 variant="link" 
                 onClick={() => setIsSignUp(!isSignUp)} 
-                className="w-full text-blue-400 text-sm">
+                className="w-full text-blue-400 text-sm"
+              >
                 {isSignUp 
                   ? 'Already have an account? Log in' 
                   : "Don't have an account? Sign up"}
