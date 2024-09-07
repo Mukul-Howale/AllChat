@@ -5,9 +5,11 @@ import ChatControls from '../components/ChatControls';
 import TextChat from '../components/TextChat';
 import MediaControls from '../components/MediaControls';
 import Header from '../layouts/Header';
-import { getUser } from '@/utils/auth';
+import { useRouter } from 'next/router';
+import { getUser, isAuthenticated } from '@/utils/auth';
 
 const VideoChat: React.FC = () => {
+  const router = useRouter();
   const [groupSize, setGroupSize] = useState<number | 'any'>(2);
   const [isChatActive, setIsChatActive] = useState(false);
   const [isWaiting, setIsWaiting] = useState(false);
@@ -118,11 +120,30 @@ const VideoChat: React.FC = () => {
   const [user, setUser] = useState<{ name: string; email: string; username: string } | null>(null);
 
   useEffect(() => {
-    const authenticatedUser = getUser();
-    if (authenticatedUser) {
-      setUser({ name: authenticatedUser.name, email: authenticatedUser.email, username: authenticatedUser.username });
-    }
-  }, []);
+    const checkAuth = () => {
+      if (!isAuthenticated()) {
+        if (isChatActive) {
+          handleStopChat();
+        }
+        router.push('/auth');
+      } else {
+        const authenticatedUser = getUser();
+        if (authenticatedUser) {
+          setUser({ name: authenticatedUser.name, email: authenticatedUser.email, username: authenticatedUser.username });
+        }
+      }
+    };
+
+    checkAuth();
+
+    // Add event listener for storage events (in case of logout in another tab)
+    window.addEventListener('storage', checkAuth);
+
+    // Cleanup function to remove the event listener
+    return () => {
+      window.removeEventListener('storage', checkAuth);
+    };
+  }, [router, isChatActive]);
 
   return (
     <div className="flex flex-col h-screen bg-gray-900">
