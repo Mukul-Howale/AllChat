@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { Avatar } from "@/components/ui/avatar"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -8,40 +8,75 @@ import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle }
 import { ThumbsUp, ThumbsDown, Bell, MessageSquare, Users } from 'lucide-react'
 import Header from '@/layouts/Header'
 import Footer from '@/layouts/Footer'
-
-// This would typically come from your authentication system
-const user = {
-  id: '123',
-  name: 'John Doe',
-  email: 'john@example.com',
-  username: 'johndoe',
-  friendsCount: 150,
-  messages: 5,
-  notifications: 3,
-  phoneNumber: '',
-  thumbsUp: 42,
-  thumbsDown: 7,
-  isPaidUser: true,
-  isEmailVerified: false
-}
+import { getUser, isAuthenticated } from '@/utils/auth'
+import { useRouter } from 'next/router'
 
 export default function UserProfile() {
-  const [username, setUsername] = useState(user.username)
-  const [phoneNumber, setPhoneNumber] = useState(user.phoneNumber)
+  const router = useRouter()
+  const [user, setUser] = useState<{
+    name: string;
+    email: string;
+    username: string;
+    phoneNumber?: string;
+    friendsCount?: number;
+    messages?: number;
+    notifications?: number;
+    thumbsUp?: number;
+    thumbsDown?: number;
+    isPaidUser?: boolean;
+    isEmailVerified?: boolean;
+  } | null>(null)
+
+  useEffect(() => {
+    const checkAuth = () => {
+      if (isAuthenticated()) {
+        const authenticatedUser = getUser();
+        if (authenticatedUser) {
+          setUser({
+            name: authenticatedUser.name,
+            email: authenticatedUser.email,
+            username: authenticatedUser.username,
+            phoneNumber: authenticatedUser.phoneNumber || '',
+            friendsCount: authenticatedUser.friendsCount || 0,
+            messages: authenticatedUser.messages || 0,
+            notifications: authenticatedUser.notifications || 0,
+            thumbsUp: authenticatedUser.thumbsUp || 0,
+            thumbsDown: authenticatedUser.thumbsDown || 0,
+            isPaidUser: authenticatedUser.isPaidUser || false,
+            isEmailVerified: authenticatedUser.isEmailVerified || false,
+          });
+        }
+      } else {
+        router.push('/auth');
+      }
+    };
+
+    checkAuth();
+
+    window.addEventListener('storage', checkAuth);
+
+    return () => {
+      window.removeEventListener('storage', checkAuth);
+    };
+  }, [router]);
 
   const handleSave = () => {
     // Here you would typically send an API request to update the user's information
-    console.log('Saving user information:', { username, phoneNumber })
+    console.log('Saving user information:', user)
   }
 
   const handleVerifyEmail = () => {
     // Here you would typically send a verification email to the user
-    console.log('Sending verification email to:', user.email)
+    console.log('Sending verification email to:', user?.email)
+  }
+
+  if (!user) {
+    return null; // or a loading spinner
   }
 
   return (
     <div className="flex flex-col min-h-screen bg-gray-800 text-white">
-      <Header />
+      <Header user={user} />
       <main className="flex-grow flex items-center justify-center p-4">
         <Card className="w-full max-w-3xl mx-auto bg-gray-700 border-gray-600">
           <CardHeader>
@@ -73,8 +108,8 @@ export default function UserProfile() {
               <Label htmlFor="username" className="text-white">Username</Label>
               <Input
                 id="username"
-                value={username}
-                onChange={(e) => setUsername(e.target.value)}
+                value={user.username}
+                onChange={(e) => setUser({...user, username: e.target.value})}
                 className="bg-gray-600 text-white border-gray-500"
               />
             </div>
@@ -83,8 +118,8 @@ export default function UserProfile() {
               <Input
                 id="phone"
                 type="tel"
-                value={phoneNumber}
-                onChange={(e) => setPhoneNumber(e.target.value)}
+                value={user.phoneNumber}
+                onChange={(e) => setUser({...user, phoneNumber: e.target.value})}
                 placeholder="Enter your phone number"
                 className="bg-gray-600 text-white border-gray-500"
               />

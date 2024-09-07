@@ -9,6 +9,7 @@ import { setUser, getUser, removeUser, isAuthenticated } from '@/utils/auth'
 import { hashPassword, comparePassword } from '@/utils/crypt'
 import { useRouter } from 'next/router'
 import { v4 as uuidv4 } from 'uuid';
+import { loginUser } from '@/utils/auth';
 
 export default function AuthPage() {
   const [isSignUp, setIsSignUp] = useState(true)
@@ -34,6 +35,7 @@ export default function AuthPage() {
       const passwordHash = await hashPassword(password)
       const newUser = { id: uuidv4(), name, email, username, passwordHash }
       setUser(newUser)
+      loginUser() // Add this line
       setUserState({ name, email, username })
       console.log('User signed up:', newUser)
     } else {
@@ -41,6 +43,7 @@ export default function AuthPage() {
       if (storedUser && storedUser.email === email) {
         const isPasswordValid = await comparePassword(password, storedUser.passwordHash)
         if (isPasswordValid) {
+          loginUser() // Add this line
           setUserState({ name: storedUser.name, email: storedUser.email, username: storedUser.username })
           console.log('User logged in:', storedUser)
         } else {

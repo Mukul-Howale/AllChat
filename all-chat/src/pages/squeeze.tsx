@@ -1,3 +1,4 @@
+import { useState, useEffect } from 'react'
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Users, Shield, Zap } from "lucide-react"
@@ -5,9 +6,34 @@ import Link from "next/link"
 import { useRouter } from 'next/router'
 import Header from '../layouts/Header'
 import Footer from '../layouts/Footer'
+import { getUser, isAuthenticated } from '@/utils/auth'
 
 export default function LandingPage() {
   const router = useRouter();
+  const [user, setUser] = useState<{ name: string; email: string; username: string } | null>(null);
+
+  useEffect(() => {
+    const checkAuth = () => {
+      if (isAuthenticated()) {
+        const authenticatedUser = getUser();
+        if (authenticatedUser) {
+          setUser({ name: authenticatedUser.name, email: authenticatedUser.email, username: authenticatedUser.username });
+        }
+      } else {
+        setUser(null);
+      }
+    };
+
+    checkAuth();
+
+    // Add event listener for storage events
+    window.addEventListener('storage', checkAuth);
+
+    // Cleanup function to remove the event listener
+    return () => {
+      window.removeEventListener('storage', checkAuth);
+    };
+  }, []);
 
   const handleStartChatting = () => {
     router.push('/video-chat');
@@ -15,7 +41,7 @@ export default function LandingPage() {
 
   return (
     <div className="flex flex-col min-h-screen bg-gray-800 text-white">
-      <Header />
+      <Header user={user} />
       <main className="flex-1">
         <section className="w-full py-12 md:py-24 lg:py-32 xl:py-48 border-b border-gray-700">
           <div className="container px-4 md:px-6">

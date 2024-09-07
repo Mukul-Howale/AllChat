@@ -3,7 +3,7 @@ import Link from 'next/link';
 import { MessageSquare, User, LogOut } from 'lucide-react';
 import { Button } from "@/components/ui/button";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { removeUser } from '@/utils/auth';
+import { logoutUser, isAuthenticated } from '@/utils/auth';
 import { useRouter } from 'next/router';
 import {
   DropdownMenu,
@@ -21,7 +21,9 @@ const Header: React.FC<HeaderProps> = ({ hideNavigation = false, user = null }) 
   const router = useRouter();
 
   const handleLogout = () => {
-    removeUser();
+    logoutUser();
+    // Dispatch a storage event to notify other components
+    window.dispatchEvent(new Event('storage'));
     router.push('/');
   };
 
@@ -39,7 +41,7 @@ const Header: React.FC<HeaderProps> = ({ hideNavigation = false, user = null }) 
           <Link className="text-sm font-medium hover:underline underline-offset-4" href="#how-it-works">
             How It Works
           </Link>
-          {user ? (
+          {isAuthenticated() && user ? (
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
                 <Button variant="ghost" className="flex items-center gap-2">
