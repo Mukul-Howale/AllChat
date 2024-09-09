@@ -19,13 +19,38 @@ const VideoChat: React.FC = () => {
   
   const localVideoRef = useRef<HTMLVideoElement>(null);
   const [remoteVideos, setRemoteVideos] = useState<React.RefObject<HTMLVideoElement>[]>([]);
+  const websocket = useRef<WebSocket | null>(null);
 
   useEffect(() => {
-    const newRemoteVideos = Array(typeof groupSize === 'number' ? groupSize - 1 : 1)
-      .fill(null)
-      .map(() => React.createRef<HTMLVideoElement>());
-    setRemoteVideos(newRemoteVideos);
-  }, [groupSize]);
+    // Establish WebSocket connection
+    websocket.current = new WebSocket('ws://localhost:8080/ws/chat');
+
+    if (websocket.current) {
+      websocket.current.onopen = () => {
+        console.log('WebSocket connection established');
+      };
+
+      websocket.current.onmessage = (event) => {
+        // Handle incoming messages
+        console.log('Received message:', event.data);
+        // You might want to update your chat state here
+        // For example:
+        // const newMessage = JSON.parse(event.data);
+        // setMessages(prevMessages => [...prevMessages, newMessage]);
+      };
+
+      websocket.current.onclose = () => {
+        console.log('WebSocket connection closed');
+      };
+    }
+
+    // Cleanup function
+    return () => {      
+      if (websocket.current) {
+        websocket.current.close();
+      }
+    };
+  }, [router, isChatActive]);
 
   const handleStartChat = async () => {
     setIsWaiting(true);
@@ -61,6 +86,11 @@ const VideoChat: React.FC = () => {
   const handleSendMessage = (message: string) => {
     const newMessage = { text: message, sender: 'You' };
     setMessages([...messages, newMessage]);
+    
+    // Send message through WebSocket
+    if (websocket.current && websocket.current.readyState === WebSocket.OPEN) {
+      websocket.current.send(JSON.stringify(newMessage));
+    }
   };
 
   const toggleVideo = () => {
@@ -117,37 +147,9 @@ const VideoChat: React.FC = () => {
     }
   };
 
-  const [user, setUser] = useState<{ name: string; email: string; username: string } | null>(null);
-
-  useEffect(() => {
-    const checkAuth = () => {
-      if (!isAuthenticated()) {
-        if (isChatActive) {
-          handleStopChat();
-        }
-        router.push('/auth');
-      } else {
-        const authenticatedUser = getUser();
-        if (authenticatedUser) {
-          setUser({ name: authenticatedUser.name, email: authenticatedUser.email, username: authenticatedUser.username });
-        }
-      }
-    };
-
-    checkAuth();
-
-    // Add event listener for storage events (in case of logout in another tab)
-    window.addEventListener('storage', checkAuth);
-
-    // Cleanup function to remove the event listener
-    return () => {
-      window.removeEventListener('storage', checkAuth);
-    };
-  }, [router, isChatActive]);
-
   return (
     <div className="flex flex-col h-screen bg-gray-900">
-      <Header user={user} />
+      <Header/>
       <div className="flex flex-grow overflow-hidden p-4">
         <div className="flex flex-col w-3/4 pr-4">
           <div className="flex-grow bg-gray-800 rounded-lg overflow-hidden mb-4">
