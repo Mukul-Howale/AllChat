@@ -31,31 +31,33 @@ export default function AuthPage() {
 
   const handleSubmit = async (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault()
-    if (isSignUp) {
-      const passwordHash = await hashPassword(password)
-      const newUser = { id: uuidv4(), name, email, username, passwordHash }
-      setUser(newUser)
-      loginUser() // Add this line
-      setUserState({ name, email, username })
-      console.log('User signed up:', newUser)
-    } else {
-      const storedUser = getUser()
-      if (storedUser && storedUser.email === email) {
-        const isPasswordValid = await comparePassword(password, storedUser.passwordHash)
-        if (isPasswordValid) {
-          loginUser() // Add this line
-          setUserState({ name: storedUser.name, email: storedUser.email, username: storedUser.username })
-          console.log('User logged in:', storedUser)
-        } else {
-          console.log('Login failed: Incorrect password')
-          return
-        }
+    try {
+      let response;
+      if (isSignUp) {
+        response = await fetch('/api/auth/signup', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ name, email, username, password }),
+        });
       } else {
-        console.log('Login failed: User not found')
-        return
+        response = await fetch('/api/auth/login', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ email, password }),
+        });
       }
+  
+      if (response.ok) {
+        const data = await response.json();
+        localStorage.setItem('token', data.token);
+        setUserState({ name, email, username });
+        router.push('/video-chat');
+      } else {
+        console.error('Authentication failed');
+      }
+    } catch (error) {
+      console.error('Error during authentication:', error);
     }
-    router.push('/video-chat')
   }
 
   const handleGoogleAuth = () => {

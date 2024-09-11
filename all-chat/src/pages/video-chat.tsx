@@ -23,7 +23,9 @@ const VideoChat: React.FC = () => {
 
   useEffect(() => {
     // Establish WebSocket connection
-    websocket.current = new WebSocket('ws://localhost:8080/ws/chat');
+    const token = localStorage.getItem('token');
+    if(token) {
+      websocket.current = new WebSocket(`ws://localhost:8080/ws/chat?token=${token}`);
 
     if (websocket.current) {
       websocket.current.onopen = () => {
@@ -50,10 +52,32 @@ const VideoChat: React.FC = () => {
         websocket.current.close();
       }
     };
+  }
+  else {
+    router.push('/auth');
+  }
   }, [router, isChatActive]);
 
   const handleStartChat = async () => {
+    const token = localStorage.getItem('token');
+    if (!token) {
+      router.push('/auth');
+      return;
+    }
     setIsWaiting(true);
+    try {
+      const response = await fetch('/api/chat/join', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        },
+        body: JSON.stringify({ groupSize }),
+      });
+      // ... rest of your handleStartChat logic
+    } catch (error) {
+      console.error('Error starting chat:', error);
+    }
     
     try {
       const stream = await navigator.mediaDevices.getUserMedia({ video: true, audio: true });
