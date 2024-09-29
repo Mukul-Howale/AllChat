@@ -13,6 +13,7 @@ import { useRouter } from 'next/router'
 
 export default function UserProfile() {
   const router = useRouter()
+  // State variable for user profile information
   const [user, setUser] = useState<{
     name: string;
     email: string;
@@ -29,6 +30,7 @@ export default function UserProfile() {
 
   useEffect(() => {
     const checkAuth = () => {
+      // Check if user is authenticated and fetch user data
       if (isAuthenticated()) {
         const authenticatedUser = getUser();
         if (authenticatedUser) {
@@ -53,8 +55,10 @@ export default function UserProfile() {
 
     checkAuth();
 
+    // Set up event listener for storage changes (e.g., logout in another tab)
     window.addEventListener('storage', checkAuth);
 
+    // Clean up event listener on component unmount
     return () => {
       window.removeEventListener('storage', checkAuth);
     };

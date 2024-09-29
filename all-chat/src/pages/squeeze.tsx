@@ -10,10 +10,12 @@ import { getUser, isAuthenticated } from '@/utils/auth'
 
 export default function LandingPage() {
   const router = useRouter();
+  // State variable for user information
   const [user, setUser] = useState<{ name: string; email: string; username: string } | null>(null);
 
   useEffect(() => {
     const checkAuth = () => {
+      // Check if user is authenticated and set user state
       if (isAuthenticated()) {
         const authenticatedUser = getUser();
         if (authenticatedUser) {
@@ -39,6 +41,7 @@ export default function LandingPage() {
     router.push('/video-chat');
   };
 
+  // Render the landing page
   return (
     <div className="flex flex-col min-h-screen bg-gray-800 text-white">
       <Header user={user} />
