@@ -1,6 +1,6 @@
 import { makeAutoObservable } from 'mobx';
 import { RootStore } from './RootStore';
-import { getUser, isAuthenticated, logout, signupUser } from '@/utils/auth';
+import { getUser, isAuthenticated, logout, signupUser, addUserToLocalStorage } from '@/utils/auth';
 
 export class User {
   id: string;
@@ -85,16 +85,18 @@ export class UserStore {
   }
 
   logout = () => {
-    logout();
+    // Do not remove user data from local storage
     this.currentUser = null;
     this.isAuthenticated = false;
-    if (typeof window !== 'undefined') {
-      localStorage.removeItem('user');
-    }
+    
+    // Call the utility logout function
+    logout();
   };
 
   login = (user: User) => {
-    this.setUser(user);
+    // During login, do not set user in local storage
+    this.currentUser = user;
+    this.isAuthenticated = true;
   };
 
   loadUserFromLocalStorage() {
@@ -176,7 +178,7 @@ export class UserStore {
     }
   }
 
-  signup(userData: Omit<User, 'id'>) {
+  signup = (userData: Omit<User, 'id'>) => {
     const tempId = `temp_${Date.now()}`;
     const userWithId: User = new User({
       ...userData,
@@ -190,8 +192,15 @@ export class UserStore {
       thumbsDown: 0,
     });
 
-    this.setUser(userWithId);
-    signupUser(userWithId);
+    // Add user to local storage without overwriting
+    if (typeof window !== 'undefined') {
+      addUserToLocalStorage(userWithId);
+    }
+
+    // Set current user
+    this.currentUser = userWithId;
+    this.isAuthenticated = true;
+
     return userWithId;
-  }
+  };
 }

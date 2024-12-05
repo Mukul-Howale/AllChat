@@ -63,32 +63,70 @@ export const logoutUser = (): void => {
   }
 };
 
-export const loginUser = (): void => {
+export const loginUser = (userData: User): void => {
   if (isBrowser) {
+    // Do NOT store user data during login
     localStorage.setItem('isLoggedIn', 'true');
   }
 };
 
 export const logout = (): void => {
   if (isBrowser) {
-    localStorage.removeItem('user');
+    // Do not remove user data, just update login status
     localStorage.setItem('isLoggedIn', 'false');
   }
 };
 
 export const signupUser = (userData: User): void => {
   if (isBrowser) {
-    // Generate a temporary unique ID
-    const tempId = `temp_${Date.now()}`;
-    const userWithId = {
-      ...userData,
-      id: tempId,
-      isEmailVerified: false,
-      isPaidUser: false,
-    };
-
-    // Store user in local storage
-    localStorage.setItem('user', JSON.stringify(userWithId));
+    // Add user to the list of users without overwriting
+    addUserToLocalStorage(userData);
+    
+    // Set current login status
     localStorage.setItem('isLoggedIn', 'true');
   }
+};
+
+export const checkUserSignedUp = (): boolean => {
+  if (isBrowser) {
+    return !!localStorage.getItem('user');
+  }
+  return false;
+};
+
+export const addUserToLocalStorage = (userData: User): void => {
+  if (isBrowser) {
+    // Retrieve existing users or initialize an empty array
+    const existingUsersStr = localStorage.getItem('allUsers');
+    const existingUsers: User[] = existingUsersStr ? JSON.parse(existingUsersStr) : [];
+
+    // Check if user already exists by email
+    const userExists = existingUsers.some(user => user.email === userData.email);
+
+    // Add user only if not already exists
+    if (!userExists) {
+      existingUsers.push(userData);
+      localStorage.setItem('allUsers', JSON.stringify(existingUsers));
+    }
+  }
+};
+
+export const removeUserFromLocalStorage = (email: string): void => {
+  if (isBrowser) {
+    const existingUsersStr = localStorage.getItem('allUsers');
+    if (existingUsersStr) {
+      let existingUsers: User[] = JSON.parse(existingUsersStr);
+      // Remove the user with the specified email
+      existingUsers = existingUsers.filter(user => user.email !== email);
+      localStorage.setItem('allUsers', JSON.stringify(existingUsers));
+    }
+  }
+};
+
+export const getAllUsersFromLocalStorage = (): User[] => {
+  if (isBrowser) {
+    const existingUsersStr = localStorage.getItem('allUsers');
+    return existingUsersStr ? JSON.parse(existingUsersStr) : [];
+  }
+  return [];
 };

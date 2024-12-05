@@ -9,11 +9,11 @@ import Header from '../layouts/Header';
 import { observer } from 'mobx-react-lite';
 import { useStore } from '@/contexts/StoreContext';
 import { v4 as uuidv4 } from 'uuid';
+import { checkUserSignedUp, getAllUsersFromLocalStorage } from '@/utils/auth';
 
 const AuthPage = observer(() => {
   const router = useRouter();
   const store = useStore();
-  const { login } = store.userStore;
 
   const [isSignUp, setIsSignUp] = useState(false);
   const [name, setName] = useState('');
@@ -25,31 +25,60 @@ const AuthPage = observer(() => {
     e.preventDefault();
 
     try {
-      // Simulated authentication logic
-      const userData = {
-        id: uuidv4(),
-        name: name || 'User',
-        email,
-        username: username || email.split('@')[0]
-      };
+      if (isSignUp) {
+        // Signup process - store user data in local storage
+        const userData = {
+          id: uuidv4(),
+          name: name || 'User',
+          email,
+          username: username || email.split('@')[0],
+          passwordHash: password, // Store password hash
+        };
 
-      login(userData);
-      router.push('/video-chat');
+        store.userStore.signup(userData);
+        router.push('/video-chat');
+      } else {
+        // Login process
+        const allUsers = getAllUsersFromLocalStorage();
+        const existingUser = allUsers.find(user => user.email === email);
+
+        if (existingUser) {
+          // User exists, log them in
+          store.userStore.login(existingUser);
+          router.push('/video-chat');
+        } else {
+          // User not signed up, redirect to signup
+          setIsSignUp(true);
+        }
+      }
     } catch (error) {
       console.error('Authentication failed:', error);
     }
   };
 
   const handleGoogleAuth = () => {
-    const googleUser = { 
-      id: uuidv4(), 
-      name: 'Google User', 
-      email: 'google@example.com', 
-      username: 'googleuser'
-    };
-    
-    login(googleUser);
-    router.push('/video-chat');
+    if (isSignUp) {
+      const googleUser = { 
+        id: uuidv4(), 
+        name: 'Google User', 
+        email: 'google@example.com', 
+        username: 'googleuser',
+        passwordHash: '', // No password for Google auth
+      };
+      
+      store.userStore.signup(googleUser);
+      router.push('/video-chat');
+    } else {
+      const allUsers = getAllUsersFromLocalStorage();
+      const existingUser = allUsers.find(user => user.email === 'google@example.com');
+
+      if (existingUser) {
+        store.userStore.login(existingUser);
+        router.push('/video-chat');
+      } else {
+        setIsSignUp(true);
+      }
+    }
   };
 
   return (
