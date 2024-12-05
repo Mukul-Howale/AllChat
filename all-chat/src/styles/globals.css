@@ -44,3 +44,56 @@ body {
 .light {
   color-scheme: light;
 }
+
+/* Add Tailwind theme classes */
+.bg-theme-background {
+  @apply bg-background;
+}
+
+.text-theme-foreground {
+  @apply text-foreground;
+}
+
+.bg-theme-primary {
+  @apply bg-primary;
+}
+
+.text-theme-primary {
+  @apply text-primary-foreground;
+}
+
+.bg-theme-secondary {
+  @apply bg-secondary;
+}
+
+.text-theme-secondary {
+  @apply text-secondary-foreground;
+}
+
+.border-theme-border {
+  @apply border-border;
+}
+
+.bg-theme-accent {
+  @apply bg-accent;
+}
+
+.text-theme-accent {
+  @apply text-accent-foreground;
+}
+
+.bg-theme-muted {
+  @apply bg-muted;
+}
+
+.text-theme-muted {
+  @apply text-muted-foreground;
+}
+
+.ring-theme-ring {
+  @apply ring-ring;
+}
+
+.border-theme-input {
+  @apply border-input;
+}

@@ -178,9 +178,9 @@ const VideoChat: React.FC = observer(() => {
     if (isWaiting) {
       return (
         <div className="flex flex-col items-center justify-center h-full space-y-4 p-4">
-          <Clock className="w-16 h-16 text-primary animate-pulse" />
-          <h2 className="text-2xl font-bold text-center text-white">Waiting for others to join...</h2>
-          <p className="text-center text-gray-300 text-sm">
+          <Clock className="w-16 h-16 text-theme-primary animate-pulse" />
+          <h2 className="text-2xl font-bold text-center text-theme-foreground">Waiting for others to join...</h2>
+          <p className="text-center text-theme-muted-foreground text-sm">
             {typeof groupSize === 'number' ? `${groupSize - 1} more ${groupSize - 1 === 1 ? 'person' : 'people'} needed` : 'Waiting for others'} to start the chat
           </p>
         </div>
@@ -197,8 +197,8 @@ const VideoChat: React.FC = observer(() => {
     } else {
       return (
         <div className="flex flex-col items-center justify-center h-full space-y-4 p-4">
-          <h2 className="text-2xl font-bold text-center text-white">Ready to start a new chat?</h2>
-          <p className="text-center text-gray-300 text-sm">
+          <h2 className="text-2xl font-bold text-center text-theme-foreground">Ready to start a new chat?</h2>
+          <p className="text-center text-theme-muted-foreground text-sm">
             Select the number of participants and click "Start Chat" when you're ready.
           </p>
         </div>
@@ -207,19 +207,29 @@ const VideoChat: React.FC = observer(() => {
   };
 
   return (
-    <div className="flex flex-col h-screen bg-gray-900">
+    <div className="flex flex-col h-screen bg-theme-background text-theme-foreground">
       <Header/>
       <div className="flex flex-grow overflow-hidden p-4">
         <div className="flex flex-col w-3/4 pr-4">
-          <div className="flex-grow bg-gray-800 rounded-lg overflow-hidden mb-4">
+          {isWaiting && (
+            <div className="flex items-center justify-center h-full">
+              <div className="flex flex-col items-center bg-theme-background p-6 rounded-lg shadow-md">
+                <Clock className="w-12 h-12 text-theme-primary mb-4" />
+                <p className="text-theme-foreground text-lg font-medium">
+                  Waiting for a chat partner...
+                </p>
+              </div>
+            </div>
+          )}
+          <div className="flex-grow bg-theme-muted rounded-lg overflow-hidden mb-4">
             {renderVideoArea()}
           </div>
           <div className="flex items-center justify-between">
             <MediaControls
               isVideoOn={isVideoOn}
               isAudioOn={isAudioOn}
-              toggleVideo={toggleVideo}
-              toggleAudio={toggleAudio}
+              onToggleVideo={toggleVideo}
+              onToggleAudio={toggleAudio}
             />
             <ChatControls
               groupSize={groupSize}
@@ -234,11 +244,12 @@ const VideoChat: React.FC = observer(() => {
           </div>
         </div>
         <div className="w-1/4 flex flex-col">
-          <div className="flex-grow bg-gray-800 rounded-lg overflow-hidden">
+          <div className="flex-grow bg-theme-accent rounded-lg overflow-hidden">
             <TextChat
               isChatActive={isChatActive}
               onSendMessage={handleSendMessage}
               messages={messages}
+              className="bg-theme-background text-theme-foreground"
             />
           </div>
         </div>

@@ -40,33 +40,40 @@ const ChatControls: React.FC<ChatControlsProps> = ({
           onClick={handleDecrease}
           disabled={isChatActive || isWaiting || groupSize === 2}
           variant="outline"
-          className="bg-white text-black"
+          className="bg-theme-primary text-theme-primary-foreground hover:bg-theme-primary/90"
         >
           -
         </Button>
-        <span className="text-xl font-semibold text-white">
-          <Users className="inline mr-2" />
-          {groupSize === 'any' ? 'Any' : `${groupSize} People`}
+        <span className="text-xl font-semibold flex items-center">
+          <Users className="inline mr-2 text-theme-primary" />
+          <span className="text-theme-foreground">
+            {groupSize === 'any' ? 'Any' : `${groupSize} People`}
+          </span>
         </span>
         <Button
           onClick={handleIncrease}
           disabled={isChatActive || isWaiting || groupSize === 4}
           variant="outline"
-          className="bg-white text-black"
+          className="bg-theme-primary text-theme-primary-foreground hover:bg-theme-primary/90"
         >
           +
         </Button>
       </div>
       <Button 
-        className={`px-6 py-2 text-black ${
-          isChatActive || isWaiting ? 'bg-white' : 'bg-white'
+        className={`px-6 py-2 font-medium ${
+          isChatActive || isWaiting 
+            ? 'bg-theme-destructive text-theme-destructive-foreground hover:bg-theme-destructive/90' 
+            : 'bg-theme-primary text-theme-primary-foreground hover:bg-theme-primary/90'
         }`}
         onClick={isChatActive || isWaiting ? handleStopChat : handleStartChat}
       >
         {isChatActive ? 'Stop Chat' : isWaiting ? 'Cancel' : 'Start Chat'}
       </Button>
       {isChatActive && (
-        <Button className="px-6 py-2 bg-white text-black" onClick={handleNextChat}>
+        <Button 
+          className="px-6 py-2 bg-theme-secondary text-theme-secondary-foreground hover:bg-theme-secondary/90 font-medium" 
+          onClick={handleNextChat}
+        >
           Next
         </Button>
       )}
