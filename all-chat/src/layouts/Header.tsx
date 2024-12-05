@@ -5,7 +5,6 @@ import { Button } from "@/components/ui/button";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { logoutUser, isAuthenticated } from '@/utils/auth';
 import { useRouter } from 'next/router';
-import { ThemeToggle } from '@/components/ui/theme-toggle';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -42,7 +41,6 @@ const Header: React.FC<HeaderProps> = ({ hideNavigation = false, user = null }) 
           <Link className="text-sm font-medium hover:underline underline-offset-4" href="#how-it-works">
             How It Works
           </Link>
-          <ThemeToggle />
           {isAuthenticated() && user ? (
             <DropdownMenu>
               <DropdownMenuTrigger asChild>

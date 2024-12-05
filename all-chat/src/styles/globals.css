@@ -1,66 +1,46 @@
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
-@layer base {
-  :root {
-    --background: 0 0% 100%;    /* Pure white */
-    --foreground: 0 0% 0%;      /* Pure black */
-    --card: 0 0% 100%;
-    --card-foreground: 0 0% 0%;
-    --popover: 0 0% 100%;
-    --popover-foreground: 0 0% 0%;
-    --primary: 142 76% 36%;     /* Vibrant green */
-    --primary-foreground: 0 0% 100%;
-    --secondary: 142 33% 96%;   /* Light green */
-    --secondary-foreground: 142 76% 36%;
-    --muted: 142 33% 96%;
-    --muted-foreground: 142 10% 40%;
-    --accent: 142 76% 36%;
-    --accent-foreground: 0 0% 100%;
-    --destructive: 0 84% 60%;
-    --destructive-foreground: 0 0% 100%;
-    --border: 142 20% 90%;
-    --input: 142 20% 90%;
-    --ring: 142 76% 36%;
-    --chart-1: 142 76% 36%;     /* Green */
-    --chart-2: 209 76% 45%;     /* Blue */
-    --chart-3: 32 95% 57%;      /* Orange */
-    --chart-4: 271 74% 56%;     /* Purple */
-    --chart-5: 0 76% 50%;       /* Red */
-    --radius: 0.75rem
-  }
-  .dark {
-    --background: 142 30% 10%;    /* Dark green-tinted black */
-    --foreground: 0 0% 100%;      /* White */
-    --card: 142 30% 12%;
-    --card-foreground: 0 0% 100%;
-    --popover: 142 30% 12%;
-    --popover-foreground: 0 0% 100%;
-    --primary: 142 76% 45%;       /* Brighter green */
-    --primary-foreground: 0 0% 100%;
-    --secondary: 142 25% 20%;     /* Muted dark green */
-    --secondary-foreground: 142 76% 45%;
-    --muted: 142 25% 20%;
-    --muted-foreground: 142 10% 75%;
-    --accent: 142 76% 45%;
-    --accent-foreground: 0 0% 100%;
-    --destructive: 0 84% 60%;
-    --destructive-foreground: 0 0% 100%;
-    --border: 142 25% 20%;
-    --input: 142 25% 20%;
-    --ring: 142 76% 45%;
-    --chart-1: 142 76% 45%;      /* Bright green */
-    --chart-2: 209 76% 55%;      /* Bright blue */
-    --chart-3: 32 95% 65%;       /* Bright orange */
-    --chart-4: 271 74% 65%;      /* Bright purple */
-    --chart-5: 0 76% 60%;        /* Bright red */
-  }
+
+:root {
+  /* Light mode colors */
+  --background: 0 0% 100%;
+  --foreground: 240 10% 3.9%;
+  
+  --card: 0 0% 100%;
+  --card-foreground: 240 10% 3.9%;
+  
+  --popover: 0 0% 100%;
+  --popover-foreground: 240 10% 3.9%;
+  
+  --primary: 142 70% 45%;
+  --primary-foreground: 355.7 100% 97.3%;
+  
+  --secondary: 142 50% 70%;
+  --secondary-foreground: 240 10% 3.9%;
+  
+  --muted: 240 4.8% 95.9%;
+  --muted-foreground: 240 3.8% 46.1%;
+  
+  --accent: 240 4.8% 95.9%;
+  --accent-foreground: 240 10% 3.9%;
+  
+  --destructive: 0 84.2% 60.2%;
+  --destructive-foreground: 0 0% 98%;
+  
+  --border: 240 5.9% 90%;
+  --input: 240 5.9% 90%;
+  --ring: 142 70% 45%;
 }
-@layer base {
-  * {
-    @apply border-border;
-  }
-  body {
-    @apply bg-background text-foreground;
-  }
+
+* {
+  border-color: hsl(var(--border));
+}
+
+body {
+  @apply bg-background text-foreground;
+}
+
+.light {
+  color-scheme: light;
 }
