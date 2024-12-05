@@ -3,7 +3,7 @@ interface User {
   name: string;
   email: string;
   username: string;  // Added username field
-  passwordHash: string;  // Store a hashed version of the password
+  passwordHash?: string;  // Make passwordHash optional
   phoneNumber?: string;
   friendsCount?: number;
   messages?: number;
@@ -73,5 +73,22 @@ export const logout = (): void => {
   if (isBrowser) {
     localStorage.removeItem('user');
     localStorage.setItem('isLoggedIn', 'false');
+  }
+};
+
+export const signupUser = (userData: User): void => {
+  if (isBrowser) {
+    // Generate a temporary unique ID
+    const tempId = `temp_${Date.now()}`;
+    const userWithId = {
+      ...userData,
+      id: tempId,
+      isEmailVerified: false,
+      isPaidUser: false,
+    };
+
+    // Store user in local storage
+    localStorage.setItem('user', JSON.stringify(userWithId));
+    localStorage.setItem('isLoggedIn', 'true');
   }
 };

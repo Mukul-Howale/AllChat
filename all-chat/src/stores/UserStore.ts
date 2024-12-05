@@ -1,9 +1,9 @@
 import { makeAutoObservable } from 'mobx';
 import { RootStore } from './RootStore';
-import { getUser, isAuthenticated, logout } from '@/utils/auth';
+import { getUser, isAuthenticated, logout, signupUser } from '@/utils/auth';
 
-export interface User {
-  id?: string;
+export class User {
+  id: string;
   name: string;
   email: string;
   username: string;
@@ -15,6 +15,34 @@ export interface User {
   thumbsDown?: number;
   isPaidUser?: boolean;
   isEmailVerified?: boolean;
+
+  constructor(data: {
+    id: string;
+    name: string;
+    email: string;
+    username: string;
+    phoneNumber?: string;
+    friendsCount?: number;
+    messages?: number;
+    notifications?: number;
+    thumbsUp?: number;
+    thumbsDown?: number;
+    isPaidUser?: boolean;
+    isEmailVerified?: boolean;
+  }) {
+    this.id = data.id;
+    this.name = data.name;
+    this.email = data.email;
+    this.username = data.username;
+    this.phoneNumber = data.phoneNumber;
+    this.friendsCount = data.friendsCount;
+    this.messages = data.messages;
+    this.notifications = data.notifications;
+    this.thumbsUp = data.thumbsUp;
+    this.thumbsDown = data.thumbsDown;
+    this.isPaidUser = data.isPaidUser;
+    this.isEmailVerified = data.isEmailVerified;
+  }
 }
 
 export class UserStore {
@@ -61,9 +89,9 @@ export class UserStore {
     this.clearUser();
   }
 
-  login(user: User) {
+  login = (user: User) => {
     this.setUser(user);
-  }
+  };
 
   loadUserFromLocalStorage() {
     if (typeof window !== 'undefined') {
@@ -71,7 +99,7 @@ export class UserStore {
       if (storedUser) {
         try {
           const parsedUser = JSON.parse(storedUser);
-          this.currentUser = parsedUser;
+          this.currentUser = new User(parsedUser);
           this.isAuthenticated = true;
         } catch (error) {
           console.error('Error parsing stored user:', error);
@@ -83,7 +111,7 @@ export class UserStore {
 
   updateProfile(updates: Partial<User>) {
     if (this.currentUser) {
-      this.currentUser = { ...this.currentUser, ...updates };
+      this.currentUser = new User({ ...this.currentUser, ...updates });
       if (typeof window !== 'undefined') {
         localStorage.setItem('user', JSON.stringify(this.currentUser));
       }
@@ -142,5 +170,24 @@ export class UserStore {
         localStorage.setItem('user', JSON.stringify(this.currentUser));
       }
     }
+  }
+
+  signup(userData: Omit<User, 'id'>) {
+    const tempId = `temp_${Date.now()}`;
+    const userWithId: User = new User({
+      ...userData,
+      id: tempId,
+      isEmailVerified: false,
+      isPaidUser: false,
+      friendsCount: 0,
+      messages: 0,
+      notifications: 0,
+      thumbsUp: 0,
+      thumbsDown: 0,
+    });
+
+    this.setUser(userWithId);
+    signupUser(userWithId);
+    return userWithId;
   }
 }
