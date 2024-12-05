@@ -1,49 +1,79 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { Clock } from 'lucide-react';
+import { observer } from 'mobx-react-lite';
+import { useStore } from '@/contexts/StoreContext';
 import VideoGrid from '../components/VideoGrid';
 import ChatControls from '../components/ChatControls';
 import TextChat from '../components/TextChat';
 import MediaControls from '../components/MediaControls';
 import Header from '../layouts/Header';
 import { useRouter } from 'next/router';
-import { getUser, isAuthenticated } from '@/utils/auth';
 
-const VideoChat: React.FC = () => {
+const VideoChat: React.FC = observer(() => {
   const router = useRouter();
+  const store = useStore();
+  const { currentUser } = store.userStore;
   const [groupSize, setGroupSize] = useState<number | 'any'>(2);
   const [isChatActive, setIsChatActive] = useState(false);
   const [isWaiting, setIsWaiting] = useState(false);
   const [messages, setMessages] = useState<{ text: string; sender: string }[]>([]);
   const [isVideoOn, setIsVideoOn] = useState(true);
   const [isAudioOn, setIsAudioOn] = useState(true);
+  const [error, setError] = useState<string | null>(null);
   
   const localVideoRef = useRef<HTMLVideoElement>(null);
   const [remoteVideos, setRemoteVideos] = useState<React.RefObject<HTMLVideoElement>[]>([]);
   const websocket = useRef<WebSocket | null>(null);
 
   useEffect(() => {
-    // Establish WebSocket connection
-    const token = localStorage.getItem('token');
-    if(token) {
-      websocket.current = new WebSocket(`ws://localhost:8080/ws/chat?token=${token}`);
+    if (!currentUser) {
+      router.push('/auth');
+      return;
+    }
 
-    if (websocket.current) {
-      websocket.current.onopen = () => {
-        console.log('WebSocket connection established');
-      };
+    // Establish WebSocket connection with user authentication
+    try {
+      websocket.current = new WebSocket(`ws://localhost:8080/ws/chat?userId=${currentUser.id}`);
 
-      websocket.current.onmessage = (event) => {
-        // Handle incoming messages
-        console.log('Received message:', event.data);
-        // You might want to update your chat state here
-        // For example:
-        // const newMessage = JSON.parse(event.data);
-        // setMessages(prevMessages => [...prevMessages, newMessage]);
-      };
+      if (websocket.current) {
+        websocket.current.onopen = () => {
+          console.log('WebSocket connection established');
+          setError(null);
+        };
 
-      websocket.current.onclose = () => {
-        console.log('WebSocket connection closed');
-      };
+        websocket.current.onmessage = (event) => {
+          try {
+            const data = JSON.parse(event.data);
+            switch (data.type) {
+              case 'chat':
+                setMessages(prevMessages => [...prevMessages, data.message]);
+                break;
+              case 'userJoined':
+                // Handle new user joining
+                break;
+              case 'userLeft':
+                // Handle user leaving
+                break;
+              default:
+                console.log('Received message:', data);
+            }
+          } catch (err) {
+            console.error('Error parsing WebSocket message:', err);
+          }
+        };
+
+        websocket.current.onclose = () => {
+          console.log('WebSocket connection closed');
+          setError('Connection closed. Please try reconnecting.');
+        };
+
+        websocket.current.onerror = () => {
+          setError('WebSocket connection error. Please try again.');
+        };
+      }
+    } catch (err) {
+      console.error('WebSocket connection error:', err);
+      setError('Failed to establish connection. Please try again.');
     }
 
     // Cleanup function
@@ -52,46 +82,51 @@ const VideoChat: React.FC = () => {
         websocket.current.close();
       }
     };
-  }
-  else {
-    router.push('/auth');
-  }
-  }, [router, isChatActive]);
+  }, [currentUser, router]);
 
   const handleStartChat = async () => {
-    const token = localStorage.getItem('token');
-    if (!token) {
+    if (!currentUser) {
       router.push('/auth');
       return;
     }
+
     setIsWaiting(true);
+    setError(null);
+
     try {
       const response = await fetch('/api/chat/join', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          'Authorization': `Bearer ${token}`
+          'Authorization': `Bearer ${currentUser.id}`
         },
-        body: JSON.stringify({ groupSize }),
+        body: JSON.stringify({ 
+          groupSize,
+          userId: currentUser.id,
+          username: currentUser.username
+        }),
       });
-      // ... rest of your handleStartChat logic
+
+      if (!response.ok) {
+        throw new Error('Failed to join chat');
+      }
+
+      try {
+        const stream = await navigator.mediaDevices.getUserMedia({ video: true, audio: true });
+        if (localVideoRef.current) {
+          localVideoRef.current.srcObject = stream;
+        }
+      } catch (error) {
+        console.error('Error accessing media devices:', error);
+      }
+
+      setTimeout(() => {
+        setIsWaiting(false);
+        setIsChatActive(true);
+      }, 5000);
     } catch (error) {
       console.error('Error starting chat:', error);
     }
-    
-    try {
-      const stream = await navigator.mediaDevices.getUserMedia({ video: true, audio: true });
-      if (localVideoRef.current) {
-        localVideoRef.current.srcObject = stream;
-      }
-    } catch (error) {
-      console.error('Error accessing media devices:', error);
-    }
-
-    setTimeout(() => {
-      setIsWaiting(false);
-      setIsChatActive(true);
-    }, 5000);
   };
 
   const handleStopChat = () => {
@@ -210,6 +245,6 @@ const VideoChat: React.FC = () => {
       </div>
     </div>
   );
-};
+});
 
 export default VideoChat;

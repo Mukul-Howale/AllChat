@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { MessageSquare, User as UserIcon, LogOut } from 'lucide-react';
 import { Button } from "@/components/ui/button";
@@ -24,6 +24,11 @@ const Header: React.FC<HeaderProps> = observer(({ hideNavigation = false, user }
   const router = useRouter();
   const store = useStore();
   const { currentUser, logout } = store.userStore;
+  const [mounted, setMounted] = useState(false);
+
+  useEffect(() => {
+    setMounted(true);
+  }, []);
 
   const headerUser = user || currentUser;
 
@@ -33,6 +38,18 @@ const Header: React.FC<HeaderProps> = observer(({ hideNavigation = false, user }
     window.dispatchEvent(new Event('storage'));
     router.push('/');
   };
+
+  // Prevent hydration mismatch by not rendering user-dependent content on server
+  if (!mounted) {
+    return (
+      <header className="bg-background text-foreground px-4 lg:px-6 h-14 flex items-center border-b border-border">
+        <Link className="flex items-center justify-center" href="/">
+          <MessageSquare className="h-6 w-6" />
+          <span className="ml-2 text-2xl font-bold">AllChat</span>
+        </Link>
+      </header>
+    );
+  }
 
   return (
     <header className="bg-background text-foreground px-4 lg:px-6 h-14 flex items-center border-b border-border">

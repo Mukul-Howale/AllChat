@@ -84,10 +84,14 @@ export class UserStore {
     }
   }
 
-  logout() {
+  logout = () => {
     logout();
-    this.clearUser();
-  }
+    this.currentUser = null;
+    this.isAuthenticated = false;
+    if (typeof window !== 'undefined') {
+      localStorage.removeItem('user');
+    }
+  };
 
   login = (user: User) => {
     this.setUser(user);
