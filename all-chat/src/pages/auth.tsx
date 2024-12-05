@@ -46,7 +46,7 @@ export default function AuthPage() {
           body: JSON.stringify({ email, password }),
         });
       }
-  
+
       if (response.ok) {
         const data = await response.json();
         localStorage.setItem('token', data.token);
@@ -75,22 +75,22 @@ export default function AuthPage() {
   }
 
   return (
-    <div className="flex flex-col min-h-screen bg-gray-800 text-white">
+    <div className="flex flex-col min-h-screen bg-background text-foreground">
       <Header hideNavigation={false} user={user} />
       <div className="flex-grow flex items-center justify-center p-4">
-        <Card className="w-full max-w-[800px] bg-gray-700 border-gray-600 flex flex-col md:flex-row">
-          <div className="md:w-1/3 p-6 flex flex-col justify-center items-center border-r border-gray-600">
+        <Card className="w-full max-w-[800px] bg-card border-border flex flex-col md:flex-row">
+          <div className="md:w-1/3 p-6 flex flex-col justify-center items-center border-r border-border">
             <Button 
               onClick={handleGoogleAuth} 
-              className="w-full bg-blue-500 hover:bg-blue-600 text-white text-sm h-10 mb-4"
+              className="w-full bg-primary hover:bg-primary/90 text-primary-foreground text-sm h-10 mb-4"
             >
               {isSignUp ? 'Sign up' : 'Continue'} with Google
             </Button>
           </div>
           <div className="md:w-2/3 p-6">
             <CardHeader className="p-0 mb-4">
-              <CardTitle className="text-white text-2xl">{isSignUp ? 'Create an account' : 'Log in'}</CardTitle>
-              <CardDescription className="text-gray-300 text-sm">
+              <CardTitle>{isSignUp ? 'Create an account' : 'Log in'}</CardTitle>
+              <CardDescription>
                 {isSignUp 
                   ? 'Enter your details below to create your account' 
                   : 'Enter your details below to log in to your account'}
@@ -101,23 +101,23 @@ export default function AuthPage() {
                 {isSignUp && (
                   <>
                     <div className="space-y-1">
-                      <Label htmlFor="name" className="text-white text-sm">Name</Label>
+                      <Label htmlFor="name">Name</Label>
                       <Input 
                         id="name" 
                         type="text" 
                         required 
-                        className="bg-gray-600 text-white border-gray-500 h-10 text-sm" 
+                        className="bg-background border-input h-10 text-sm" 
                         value={name}
                         onChange={(e) => setName(e.target.value)}
                       />
                     </div>
                     <div className="space-y-1">
-                      <Label htmlFor="username" className="text-white text-sm">Username</Label>
+                      <Label htmlFor="username">Username</Label>
                       <Input 
                         id="username" 
                         type="text" 
                         required 
-                        className="bg-gray-600 text-white border-gray-500 h-10 text-sm" 
+                        className="bg-background border-input h-10 text-sm" 
                         value={username}
                         onChange={(e) => setUsername(e.target.value)}
                       />
@@ -125,56 +125,41 @@ export default function AuthPage() {
                   </>
                 )}
                 <div className="space-y-1">
-                  <Label htmlFor="email" className="text-white text-sm">Email</Label>
+                  <Label htmlFor="email">Email</Label>
                   <Input 
                     id="email" 
                     type="email" 
                     required 
-                    className="bg-gray-600 text-white border-gray-500 h-10 text-sm" 
+                    className="bg-background border-input h-10 text-sm" 
                     value={email}
                     onChange={(e) => setEmail(e.target.value)}
                   />
                 </div>
                 <div className="space-y-1">
-                  <Label htmlFor="password" className="text-white text-sm">Password</Label>
+                  <Label htmlFor="password">Password</Label>
                   <Input 
                     id="password" 
                     type="password" 
                     required 
-                    className="bg-gray-600 text-white border-gray-500 h-10 text-sm" 
+                    className="bg-background border-input h-10 text-sm" 
                     value={password}
                     onChange={(e) => setPassword(e.target.value)}
                   />
                 </div>
-                {isSignUp && (
-                  <p className="text-xs text-gray-300">
-                    By creating an account, you agree to our{' '}
-                    <Link href="/terms" className="underline text-blue-400">
-                      Terms of Service
-                    </Link>{' '}
-                    and{' '}
-                    <Link href="/privacy" className="underline text-blue-400">
-                      Privacy Policy
-                    </Link>
-                    .
-                  </p>
-                )}
-                <Button type="submit" className="w-full bg-blue-500 hover:bg-blue-600 text-white text-sm h-10">
-                  {isSignUp ? 'Sign Up' : 'Log In'}
+                <Button type="submit" className="w-full bg-primary hover:bg-primary/90 text-primary-foreground">
+                  {isSignUp ? 'Create Account' : 'Log In'}
                 </Button>
               </form>
+              <div className="text-center">
+                <button
+                  type="button"
+                  onClick={() => setIsSignUp(!isSignUp)}
+                  className="text-sm text-muted-foreground hover:text-primary"
+                >
+                  {isSignUp ? 'Already have an account? Log in' : "Don't have an account? Sign up"}
+                </button>
+              </div>
             </CardContent>
-            <CardFooter className="p-0 mt-4">
-              <Button 
-                variant="link" 
-                onClick={() => setIsSignUp(!isSignUp)} 
-                className="w-full text-blue-400 text-sm"
-              >
-                {isSignUp 
-                  ? 'Already have an account? Log in' 
-                  : "Don't have an account? Sign up"}
-              </Button>
-            </CardFooter>
           </div>
         </Card>
       </div>
