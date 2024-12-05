@@ -68,3 +68,10 @@ export const loginUser = (): void => {
     localStorage.setItem('isLoggedIn', 'true');
   }
 };
+
+export const logout = (): void => {
+  if (isBrowser) {
+    localStorage.removeItem('user');
+    localStorage.setItem('isLoggedIn', 'false');
+  }
+};

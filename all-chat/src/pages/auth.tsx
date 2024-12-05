@@ -1,82 +1,60 @@
-import { useState, useEffect } from 'react'
-import { Button } from "@/components/ui/button"
-import { Input } from "@/components/ui/input"
-import { Label } from "@/components/ui/label"
-import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card"
-import Link from 'next/link'
-import Header from '@/layouts/Header'
-import { setUser, getUser, removeUser, isAuthenticated } from '@/utils/auth'
-import { hashPassword, comparePassword } from '@/utils/crypt'
-import { useRouter } from 'next/router'
+import { useState } from 'react';
+import { useRouter } from 'next/router';
+import Link from 'next/link';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { Label } from '@/components/ui/label';
+import Header from '../layouts/Header';
+import { observer } from 'mobx-react-lite';
+import { useStore } from '@/contexts/StoreContext';
 import { v4 as uuidv4 } from 'uuid';
-import { loginUser } from '@/utils/auth';
 
-export default function AuthPage() {
-  const [isSignUp, setIsSignUp] = useState(true)
-  const [name, setName] = useState('')
-  const [email, setEmail] = useState('')
-  const [username, setUsername] = useState('')
-  const [password, setPassword] = useState('')
-  const router = useRouter()
-  const [user, setUserState] = useState<{ name: string; email: string; username: string } | null>(null)
+const AuthPage = observer(() => {
+  const router = useRouter();
+  const store = useStore();
+  const { login } = store.userStore;
 
-  useEffect(() => {
-    if (isAuthenticated()) {
-      const authenticatedUser = getUser()
-      if (authenticatedUser) {
-        setUserState({ name: authenticatedUser.name, email: authenticatedUser.email, username: authenticatedUser.username })
-      }
-    }
-  }, [])
+  const [isSignUp, setIsSignUp] = useState(false);
+  const [name, setName] = useState('');
+  const [username, setUsername] = useState('');
+  const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
 
-  const handleSubmit = async (event: React.FormEvent<HTMLFormElement>) => {
-    event.preventDefault()
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+
     try {
-      let response;
-      if (isSignUp) {
-        response = await fetch('/api/auth/signup', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ name, email, username, password }),
-        });
-      } else {
-        response = await fetch('/api/auth/login', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ email, password }),
-        });
-      }
+      // Simulated authentication logic
+      const userData = {
+        id: uuidv4(),
+        name: name || 'User',
+        email,
+        username: username || email.split('@')[0]
+      };
 
-      if (response.ok) {
-        const data = await response.json();
-        localStorage.setItem('token', data.token);
-        setUserState({ name, email, username });
-        router.push('/video-chat');
-      } else {
-        console.error('Authentication failed');
-      }
+      login(userData);
+      router.push('/video-chat');
     } catch (error) {
-      console.error('Error during authentication:', error);
+      console.error('Authentication failed:', error);
     }
-  }
+  };
 
   const handleGoogleAuth = () => {
     const googleUser = { 
       id: uuidv4(), 
       name: 'Google User', 
       email: 'google@example.com', 
-      username: 'googleuser',
-      passwordHash: '' 
-    }
-    setUser(googleUser)
-    setUserState({ name: googleUser.name, email: googleUser.email, username: googleUser.username })
-    console.log('Google auth successful:', googleUser)
-    router.push('/video-chat')
-  }
+      username: 'googleuser'
+    };
+    
+    login(googleUser);
+    router.push('/video-chat');
+  };
 
   return (
     <div className="flex flex-col min-h-screen bg-background text-foreground">
-      <Header hideNavigation={false} user={user} />
+      <Header />
       <div className="flex-grow flex items-center justify-center p-4">
         <Card className="w-full max-w-[800px] bg-card border-border flex flex-col md:flex-row">
           <div className="md:w-1/3 p-6 flex flex-col justify-center items-center border-r border-border">
@@ -164,5 +142,7 @@ export default function AuthPage() {
         </Card>
       </div>
     </div>
-  )
-}
+  );
+});
+
+export default AuthPage;

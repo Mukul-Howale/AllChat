@@ -1,4 +1,3 @@
-import { useState, useEffect } from 'react'
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Users, Shield, Zap } from "lucide-react"
@@ -6,36 +5,13 @@ import Link from "next/link"
 import { useRouter } from 'next/router'
 import Header from '../layouts/Header'
 import Footer from '../layouts/Footer'
-import { getUser, isAuthenticated } from '@/utils/auth'
+import { observer } from 'mobx-react-lite'
+import { useStore } from '@/contexts/StoreContext'
 
-export default function LandingPage() {
+const LandingPage = observer(() => {
   const router = useRouter();
-  // State variable for user information
-  const [user, setUser] = useState<{ name: string; email: string; username: string } | null>(null);
-
-  useEffect(() => {
-    const checkAuth = () => {
-      // Check if user is authenticated and set user state
-      if (isAuthenticated()) {
-        const authenticatedUser = getUser();
-        if (authenticatedUser) {
-          setUser({ name: authenticatedUser.name, email: authenticatedUser.email, username: authenticatedUser.username });
-        }
-      } else {
-        setUser(null);
-      }
-    };
-
-    checkAuth();
-
-    // Add event listener for storage events
-    window.addEventListener('storage', checkAuth);
-
-    // Cleanup function to remove the event listener
-    return () => {
-      window.removeEventListener('storage', checkAuth);
-    };
-  }, []);
+  const store = useStore();
+  const { currentUser } = store.userStore;
 
   const handleStartChatting = () => {
     router.push('/video-chat');
@@ -44,7 +20,7 @@ export default function LandingPage() {
   // Render the landing page
   return (
     <div className="flex flex-col min-h-screen bg-background text-foreground">
-      <Header user={user} />
+      <Header user={currentUser ?? undefined} />
       <main className="flex-1">
         <section className="w-full py-12 md:py-24 lg:py-32 xl:py-48 border-b border-border">
           <div className="container px-4 md:px-6">
@@ -126,8 +102,7 @@ export default function LandingPage() {
                 </form>
                 <p className="text-xs text-muted-foreground">
                   By signing up, you agree to our{" "}
-
-                  <Link className="underline underline-offset-2 hover:text-primary" href="#">
+                  <Link className="underline underline-offset-2 hover:text-primary" href="/terms">
                     Terms & Conditions
                   </Link>
                 </p>
@@ -139,4 +114,6 @@ export default function LandingPage() {
       <Footer />
     </div>
   );
-}
+});
+
+export default LandingPage;
