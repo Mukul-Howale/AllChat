@@ -1,18 +1,23 @@
 import React from 'react';
 import Link from 'next/link';
-import { Button } from '@/components/ui/button';
+import { MessageSquare, User as UserIcon, LogOut } from 'lucide-react';
+import { Button } from "@/components/ui/button";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { logoutUser, isAuthenticated } from '@/utils/auth';
 import { useRouter } from 'next/router';
-import { LogOut, User as LucideUser } from 'lucide-react';
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 import { observer } from 'mobx-react-lite';
 import { useStore } from '@/contexts/StoreContext';
-
-interface User {
-  // Add properties of the User type here
-}
+import { User } from '@/stores/UserStore';
 
 interface HeaderProps {
   hideNavigation?: boolean;
-  user?: User;
+  user?: User | undefined;
 }
 
 const Header: React.FC<HeaderProps> = observer(({ hideNavigation = false, user }) => {
@@ -20,41 +25,64 @@ const Header: React.FC<HeaderProps> = observer(({ hideNavigation = false, user }
   const store = useStore();
   const { currentUser, logout } = store.userStore;
 
+  const headerUser = user || currentUser;
+
   const handleLogout = () => {
     logout();
+    // Dispatch a storage event to notify other components
+    window.dispatchEvent(new Event('storage'));
     router.push('/');
   };
 
   return (
-    <header className="sticky top-0 z-50 w-full border-b border-border bg-background/80 backdrop-blur-sm">
-      <div className="container flex h-14 max-w-screen-2xl items-center justify-between">
-        <div className="flex items-center space-x-4">
-          <Link href="/" className="flex items-center space-x-2">
-            <span className="font-bold text-primary">AllChat</span>
+    <header className="bg-background text-foreground px-4 lg:px-6 h-14 flex items-center border-b border-border">
+      <Link className="flex items-center justify-center" href="/">
+        <MessageSquare className="h-6 w-6" />
+        <span className="ml-2 text-2xl font-bold">AllChat</span>
+      </Link>
+      {!hideNavigation && (
+        <nav className="ml-auto flex items-center gap-4 sm:gap-6">
+          <Link className="text-sm font-medium hover:underline underline-offset-4" href="#features">
+            Features
           </Link>
-        </div>
-
-        {!hideNavigation && (
-          <nav className="flex items-center space-x-4">
-            {currentUser ? (
-              <div className="flex items-center space-x-4">
-                <Button variant="ghost" size="icon" onClick={() => router.push('/profile')}>
-                  <LucideUser className="h-5 w-5" />
+          <Link className="text-sm font-medium hover:underline underline-offset-4" href="#how-it-works">
+            How It Works
+          </Link>
+          {headerUser ? (
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button variant="ghost" className="flex items-center gap-2">
+                  <Avatar className="h-8 w-8">
+                    <AvatarImage src={`https://api.dicebear.com/6.x/initials/svg?seed=${headerUser.name}`} />
+                    <AvatarFallback>{headerUser.name.charAt(0)}</AvatarFallback>
+                  </Avatar>
+                  <span className="text-sm font-medium">{headerUser.name}</span>
                 </Button>
-                <Button variant="ghost" size="icon" onClick={handleLogout}>
-                  <LogOut className="h-5 w-5" />
-                </Button>
-              </div>
-            ) : (
-              <Link href="/auth">
-                <Button variant="default">Sign In</Button>
-              </Link>
-            )}
-          </nav>
-        )}
-      </div>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end">
+                <DropdownMenuItem onSelect={() => router.push('/profile')}>
+                  <UserIcon className="mr-2 h-4 w-4" />
+                  <span>Profile</span>
+                </DropdownMenuItem>
+                <DropdownMenuItem onSelect={handleLogout}>
+                  <LogOut className="mr-2 h-4 w-4" />
+                  <span>Logout</span>
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
+          ) : (
+            <Link href="/auth">
+              <Button 
+                variant="outline" 
+                className="text-sm hover:bg-accent hover:text-accent-foreground transition-all duration-200 ease-in-out">
+                Login / Sign Up
+              </Button>
+            </Link>
+          )}
+        </nav>
+      )}
     </header>
-  );
+  );  
 });
 
 export default Header;

@@ -66,7 +66,7 @@ const UserProfile = observer(() => {
 
   return (
     <div className="flex flex-col min-h-screen bg-gray-800 text-white">
-      <Header user={currentUser} />
+      <Header />
       <main className="flex-grow flex items-center justify-center p-4">
         <Card className="w-full max-w-3xl mx-auto bg-gray-700 border-gray-600">
           <CardHeader>

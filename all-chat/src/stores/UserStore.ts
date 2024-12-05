@@ -26,7 +26,9 @@ export class UserStore {
     makeAutoObservable(this);
     this.rootStore = rootStore;
     this.checkAuthentication();
-    this.loadUserFromLocalStorage();
+    if (typeof window !== 'undefined') {
+      this.loadUserFromLocalStorage();
+    }
   }
 
   checkAuthentication() {
@@ -41,77 +43,104 @@ export class UserStore {
   setUser(user: User) {
     this.currentUser = user;
     this.isAuthenticated = true;
+    if (typeof window !== 'undefined') {
+      localStorage.setItem('user', JSON.stringify(user));
+    }
   }
 
   clearUser() {
     this.currentUser = null;
     this.isAuthenticated = false;
+    if (typeof window !== 'undefined') {
+      localStorage.removeItem('user');
+    }
   }
 
   logout() {
     logout();
     this.clearUser();
-    localStorage.removeItem('user');
   }
 
   login(user: User) {
     this.setUser(user);
-    localStorage.setItem('user', JSON.stringify(user));
   }
 
   loadUserFromLocalStorage() {
-    const storedUser = localStorage.getItem('user');
-    if (storedUser) {
-      this.currentUser = JSON.parse(storedUser);
+    if (typeof window !== 'undefined') {
+      const storedUser = localStorage.getItem('user');
+      if (storedUser) {
+        try {
+          const parsedUser = JSON.parse(storedUser);
+          this.currentUser = parsedUser;
+          this.isAuthenticated = true;
+        } catch (error) {
+          console.error('Error parsing stored user:', error);
+          localStorage.removeItem('user');
+        }
+      }
     }
   }
 
   updateProfile(updates: Partial<User>) {
     if (this.currentUser) {
       this.currentUser = { ...this.currentUser, ...updates };
-      localStorage.setItem('user', JSON.stringify(this.currentUser));
+      if (typeof window !== 'undefined') {
+        localStorage.setItem('user', JSON.stringify(this.currentUser));
+      }
     }
   }
 
   verifyEmail() {
     if (this.currentUser) {
       this.currentUser.isEmailVerified = true;
-      localStorage.setItem('user', JSON.stringify(this.currentUser));
+      if (typeof window !== 'undefined') {
+        localStorage.setItem('user', JSON.stringify(this.currentUser));
+      }
     }
   }
 
   incrementFriends() {
     if (this.currentUser) {
       this.currentUser.friendsCount = (this.currentUser.friendsCount || 0) + 1;
-      localStorage.setItem('user', JSON.stringify(this.currentUser));
+      if (typeof window !== 'undefined') {
+        localStorage.setItem('user', JSON.stringify(this.currentUser));
+      }
     }
   }
 
   incrementMessages() {
     if (this.currentUser) {
       this.currentUser.messages = (this.currentUser.messages || 0) + 1;
-      localStorage.setItem('user', JSON.stringify(this.currentUser));
+      if (typeof window !== 'undefined') {
+        localStorage.setItem('user', JSON.stringify(this.currentUser));
+      }
     }
   }
 
   incrementNotifications() {
     if (this.currentUser) {
       this.currentUser.notifications = (this.currentUser.notifications || 0) + 1;
-      localStorage.setItem('user', JSON.stringify(this.currentUser));
+      if (typeof window !== 'undefined') {
+        localStorage.setItem('user', JSON.stringify(this.currentUser));
+      }
     }
   }
 
   incrementThumbsUp() {
     if (this.currentUser) {
       this.currentUser.thumbsUp = (this.currentUser.thumbsUp || 0) + 1;
-      localStorage.setItem('user', JSON.stringify(this.currentUser));
+      if (typeof window !== 'undefined') {
+        localStorage.setItem('user', JSON.stringify(this.currentUser));
+      }
     }
   }
 
   incrementThumbsDown() {
     if (this.currentUser) {
       this.currentUser.thumbsDown = (this.currentUser.thumbsDown || 0) + 1;
-      localStorage.setItem('user', JSON.stringify(this.currentUser));
+      if (typeof window !== 'undefined') {
+        localStorage.setItem('user', JSON.stringify(this.currentUser));
+      }
     }
   }
 }
