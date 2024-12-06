@@ -228,8 +228,8 @@ const VideoChat: React.FC = observer(() => {
             <MediaControls
               isVideoOn={isVideoOn}
               isAudioOn={isAudioOn}
-              onToggleVideo={toggleVideo}
-              onToggleAudio={toggleAudio}
+              toggleVideo={toggleVideo}
+              toggleAudio={toggleAudio}
             />
             <ChatControls
               groupSize={groupSize}

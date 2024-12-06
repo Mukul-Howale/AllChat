@@ -6,9 +6,10 @@ interface TextChatProps {
   isChatActive: boolean;
   onSendMessage: (message: string) => void;
   messages: { text: string; sender: string }[];
+  className?: string;
 }
 
-const TextChat: React.FC<TextChatProps> = ({ isChatActive, onSendMessage, messages }) => {
+const TextChat: React.FC<TextChatProps> = ({ isChatActive, onSendMessage, messages, className }) => {
   const [message, setMessage] = useState('');
 
   const handleSend = () => {
@@ -19,7 +20,7 @@ const TextChat: React.FC<TextChatProps> = ({ isChatActive, onSendMessage, messag
   };
 
   return (
-    <div className="flex flex-col h-full text-white">
+    <div className={`flex flex-col h-full text-white ${className || ''}`}>
       <div className="flex-grow overflow-y-auto p-4 space-y-4">
         {messages.map((msg, index) => (
           <div key={index} className={`${msg.sender === 'You' ? 'text-right' : 'text-left'}`}>
