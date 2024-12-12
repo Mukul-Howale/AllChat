@@ -3,34 +3,118 @@
 @tailwind utilities;
 
 :root {
-  /* Light mode colors */
-  --background: 0 0% 100%;
-  --foreground: 240 10% 3.9%;
+  /* Material Design Color System */
   
-  --card: 0 0% 100%;
-  --card-foreground: 240 10% 3.9%;
+  /* Primary Colors */
+  --primary-50: 142 76% 97%;
+  --primary-100: 142 75% 90%;
+  --primary-200: 142 74% 83%;
+  --primary-300: 142 73% 74%;
+  --primary-400: 142 72% 63%;
+  --primary-500: 142 70% 45%; /* Main primary color */
+  --primary-600: 142 69% 40%;
+  --primary-700: 142 68% 35%;
+  --primary-800: 142 67% 30%;
+  --primary-900: 142 66% 25%;
   
-  --popover: 0 0% 100%;
-  --popover-foreground: 240 10% 3.9%;
+  /* Secondary Colors */
+  --secondary-50: 265 76% 97%;
+  --secondary-100: 265 75% 90%;
+  --secondary-200: 265 74% 83%;
+  --secondary-300: 265 73% 74%;
+  --secondary-400: 265 72% 63%;
+  --secondary-500: 265 70% 45%; /* Main secondary color */
+  --secondary-600: 265 69% 40%;
+  --secondary-700: 265 68% 35%;
+  --secondary-800: 265 67% 30%;
+  --secondary-900: 265 66% 25%;
+
+  /* Surface Colors */
+  --surface-50: 0 0% 98%;
+  --surface-100: 0 0% 96%;
+  --surface-200: 0 0% 93%;
+  --surface-300: 0 0% 88%;
+  --surface-400: 0 0% 74%;
+  --surface-500: 0 0% 62%;
+  --surface-600: 0 0% 46%;
+  --surface-700: 0 0% 38%;
+  --surface-800: 0 0% 26%;
+  --surface-900: 0 0% 13%;
   
-  --primary: 142 70% 45%;
-  --primary-foreground: 355.7 100% 97.3%;
-  
-  --secondary: 142 50% 70%;
-  --secondary-foreground: 240 10% 3.9%;
-  
-  --muted: 240 4.8% 95.9%;
-  --muted-foreground: 240 3.8% 46.1%;
-  
-  --accent: 240 4.8% 95.9%;
-  --accent-foreground: 240 10% 3.9%;
-  
-  --destructive: 0 84.2% 60.2%;
-  --destructive-foreground: 0 0% 98%;
-  
-  --border: 240 5.9% 90%;
-  --input: 240 5.9% 90%;
-  --ring: 142 70% 45%;
+  /* Error Colors */
+  --error-50: 0 86% 97%;
+  --error-100: 0 85% 90%;
+  --error-200: 0 84% 83%;
+  --error-300: 0 83% 74%;
+  --error-400: 0 82% 63%;
+  --error-500: 0 84.2% 60.2%; /* Main error color */
+  --error-600: 0 72% 51%;
+  --error-700: 0 74% 42%;
+  --error-800: 0 70% 35%;
+  --error-900: 0 63% 31%;
+
+  /* System Colors */
+  --background: var(--surface-50);
+  --foreground: var(--surface-900);
+  --card: var(--surface-100);
+  --card-foreground: var(--surface-900);
+  --popover: var(--surface-50);
+  --popover-foreground: var(--surface-900);
+  --primary-main: var(--primary-500);
+  --primary-light: var(--primary-300);
+  --primary-dark: var(--primary-700);
+  --primary-foreground: var(--surface-50);
+  --secondary-main: var(--secondary-500);
+  --secondary-light: var(--secondary-300);
+  --secondary-dark: var(--secondary-700);
+  --secondary-foreground: var(--surface-50);
+  --muted: var(--surface-200);
+  --muted-foreground: var(--surface-700);
+  --accent: var(--secondary-200);
+  --accent-foreground: var(--secondary-800);
+  --destructive: var(--error-500);
+  --destructive-foreground: var(--surface-50);
+  --border: var(--surface-200);
+  --input: var(--surface-300);
+  --ring: var(--primary-500);
+
+  /* Elevation Shadows */
+  --shadow-1: 0 2px 1px -1px rgba(0,0,0,0.2),
+              0 1px 1px 0 rgba(0,0,0,0.14),
+              0 1px 3px 0 rgba(0,0,0,0.12);
+  --shadow-2: 0 3px 1px -2px rgba(0,0,0,0.2),
+              0 2px 2px 0 rgba(0,0,0,0.14),
+              0 1px 5px 0 rgba(0,0,0,0.12);
+  --shadow-3: 0 3px 3px -2px rgba(0,0,0,0.2),
+              0 3px 4px 0 rgba(0,0,0,0.14),
+              0 1px 8px 0 rgba(0,0,0,0.12);
+}
+
+/* Dark mode overrides */
+.dark {
+  --background: var(--surface-900);
+  --foreground: var(--surface-50);
+  --card: var(--surface-800);
+  --card-foreground: var(--surface-50);
+  --popover: var(--surface-800);
+  --popover-foreground: var(--surface-50);
+  --primary-main: var(--primary-300);
+  --primary-light: var(--primary-200);
+  --primary-dark: var(--primary-400);
+  --primary-foreground: var(--surface-900);
+  --secondary-main: var(--secondary-300);
+  --secondary-light: var(--secondary-200);
+  --secondary-dark: var(--secondary-400);
+  --secondary-foreground: var(--surface-900);
+  --muted: var(--surface-700);
+  --muted-foreground: var(--surface-300);
+  --accent: var(--secondary-700);
+  --accent-foreground: var(--secondary-200);
+  --destructive: var(--error-400);
+  --destructive-foreground: var(--surface-900);
+  --border: var(--surface-700);
+  --input: var(--surface-600);
+  --ring: var(--primary-400);
 }
 
 * {
@@ -41,11 +125,20 @@ body {
   @apply bg-background text-foreground;
 }
 
-.light {
-  color-scheme: light;
+/* Material Design Utility Classes */
+.elevation-1 {
+  box-shadow: var(--shadow-1);
 }
 
-/* Add Tailwind theme classes */
+.elevation-2 {
+  box-shadow: var(--shadow-2);
+}
+
+.elevation-3 {
+  box-shadow: var(--shadow-3);
+}
+
+/* Theme Classes */
 .bg-theme-background {
   @apply bg-background;
 }
@@ -55,19 +148,43 @@ body {
 }
 
 .bg-theme-primary {
-  @apply bg-primary;
+  background-color: hsl(var(--primary-main));
+}
+
+.bg-theme-primary-light {
+  background-color: hsl(var(--primary-light));
+}
+
+.bg-theme-primary-dark {
+  background-color: hsl(var(--primary-dark));
 }
 
 .text-theme-primary {
-  @apply text-primary-foreground;
+  color: hsl(var(--primary-foreground));
 }
 
 .bg-theme-secondary {
-  @apply bg-secondary;
+  background-color: hsl(var(--secondary-main));
+}
+
+.bg-theme-secondary-light {
+  background-color: hsl(var(--secondary-light));
+}
+
+.bg-theme-secondary-dark {
+  background-color: hsl(var(--secondary-dark));
 }
 
 .text-theme-secondary {
-  @apply text-secondary-foreground;
+  color: hsl(var(--secondary-foreground));
+}
+
+.bg-theme-surface {
+  background-color: hsl(var(--surface-100));
+}
+
+.text-theme-surface {
+  color: hsl(var(--surface-900));
 }
 
 .border-theme-border {

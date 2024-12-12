@@ -65,10 +65,10 @@ const UserProfile = observer(() => {
   if (!currentUser) return null;
 
   return (
-    <div className="flex flex-col min-h-screen bg-gray-800 text-white">
+    <div className="flex flex-col min-h-screen bg-theme-background text-theme-foreground">
       <Header />
       <main className="flex-grow flex items-center justify-center p-4">
-        <Card className="w-full max-w-3xl mx-auto bg-gray-700 border-gray-600">
+        <Card className="w-full max-w-3xl mx-auto bg-theme-background border-theme-border">
           <CardHeader>
             <div className="flex items-center space-x-4">
               <Avatar className="w-20 h-20">
@@ -79,67 +79,67 @@ const UserProfile = observer(() => {
                 />
               </Avatar>
               <div>
-                <CardTitle className="text-white">{currentUser.name}</CardTitle>
-                <CardDescription className="text-gray-300">User Profile</CardDescription>
+                <CardTitle className="text-theme-foreground">{currentUser.name}</CardTitle>
+                <CardDescription className="text-theme-muted">User Profile</CardDescription>
               </div>
             </div>
           </CardHeader>
           <CardContent className="space-y-4">
             <form onSubmit={handleSaveProfile} className="space-y-4">
               <div className="space-y-2">
-                <Label htmlFor="name" className="text-white">Name</Label>
+                <Label htmlFor="name" className="text-theme-foreground">Name</Label>
                 <Input
                   id="name"
                   type="text"
                   value={name}
                   onChange={(e) => setName(e.target.value)}
-                  className="bg-gray-600 text-white border-gray-500"
+                  className="bg-theme-background text-theme-foreground border-theme-input"
                 />
               </div>
               <div className="space-y-2">
-                <Label htmlFor="email" className="text-white">Email</Label>
+                <Label htmlFor="email" className="text-theme-foreground">Email</Label>
                 <Input
                   id="email"
                   type="email"
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
-                  className="bg-gray-600 text-white border-gray-500"
+                  className="bg-theme-background text-theme-foreground border-theme-input"
                 />
               </div>
               <div className="space-y-2">
-                <Label htmlFor="username" className="text-white">Username</Label>
+                <Label htmlFor="username" className="text-theme-foreground">Username</Label>
                 <Input
                   id="username"
                   type="text"
                   value={username}
                   onChange={(e) => setUsername(e.target.value)}
-                  className="bg-gray-600 text-white border-gray-500"
+                  className="bg-theme-background text-theme-foreground border-theme-input"
                 />
               </div>
               <div className="space-y-2">
-                <Label htmlFor="phone" className="text-white">Phone Number (Optional)</Label>
+                <Label htmlFor="phone" className="text-theme-foreground">Phone Number (Optional)</Label>
                 <Input
                   id="phone"
                   type="tel"
                   value={phoneNumber}
                   onChange={(e) => setPhoneNumber(e.target.value)}
                   placeholder="Enter your phone number"
-                  className="bg-gray-600 text-white border-gray-500"
+                  className="bg-theme-background text-theme-foreground border-theme-input"
                 />
               </div>
-              <div className="flex items-center space-x-2 text-gray-300">
+              <div className="flex items-center space-x-2 text-theme-muted">
                 <Users size={20} />
                 <span>{friendsCount} friends</span>
               </div>
-              <div className="flex items-center space-x-2 text-gray-300">
+              <div className="flex items-center space-x-2 text-theme-muted">
                 <MessageSquare size={20} />
                 <span>{messages} messages</span>
               </div>
-              <div className="flex items-center space-x-2 text-gray-300">
+              <div className="flex items-center space-x-2 text-theme-muted">
                 <Bell size={20} />
                 <span>{notifications} notifications</span>
               </div>
-              <div className="flex items-center space-x-4 text-gray-300">
+              <div className="flex items-center space-x-4 text-theme-muted">
                 <div className="flex items-center space-x-2">
                   <ThumbsUp size={20} />
                   <span>{thumbsUp}</span>
@@ -151,17 +151,17 @@ const UserProfile = observer(() => {
               </div>
               <div className="flex items-center space-x-2">
                 <Switch id="paid-user" checked={isPaidUser} disabled />
-                <Label htmlFor="paid-user" className="text-white">
+                <Label htmlFor="paid-user" className="text-theme-foreground">
                   {isPaidUser ? 'Paid User' : 'Free User'}
                 </Label>
               </div>
               <div className="flex space-x-4">
-                <Button type="submit" className="bg-blue-500 hover:bg-blue-600 text-white">Save Profile</Button>
+                <Button type="submit" className="bg-theme-button hover:bg-theme-button-hover text-theme-foreground">Save Profile</Button>
                 <Button 
                   type="button" 
                   variant="destructive" 
                   onClick={handleLogout}
-                  className="bg-red-500 hover:bg-red-600 text-white"
+                  className="bg-theme-button-destructive hover:bg-theme-button-destructive-hover text-theme-foreground"
                 >
                   Logout
                 </Button>
