@@ -154,13 +154,23 @@ const UserProfile = observer(() => {
                       </div>
                     </div>
 
-                    <div className="pt-4">
+                    <div className="pt-4 space-y-4">
                       <Button 
                         type="submit"
                         className="bg-theme-primary text-theme-surface hover:bg-theme-primary-600 transition-colors elevation-1"
                       >
                         Save Changes
                       </Button>
+                      
+                      <div className="flex">
+                        <Button 
+                          onClick={handleLogout}
+                          variant="outline"
+                          className="text-theme-foreground hover:bg-theme-surface-100 transition-colors"
+                        >
+                          Logout
+                        </Button>
+                      </div>
                     </div>
                   </form>
                 </div>
@@ -168,19 +178,18 @@ const UserProfile = observer(() => {
                 <div>
                   <h2 className="text-lg font-semibold text-theme-foreground mb-4">Account Settings</h2>
                   <div className="space-y-4">
-                    <div className="flex items-center justify-between p-4 bg-theme-surface-100 rounded-md">
+                    <div className="flex items-center justify-between p-4 bg-red-50 dark:bg-red-900/10 rounded-md border border-red-200 dark:border-red-800">
                       <div>
-                        <h3 className="font-medium text-theme-foreground">Delete Account</h3>
-                        <p className="text-sm text-theme-foreground/60">
+                        <h3 className="font-medium text-red-700 dark:text-red-400">Delete Account</h3>
+                        <p className="text-sm text-red-600/80 dark:text-red-400/80">
                           Permanently delete your account and all associated data
                         </p>
                       </div>
                       <Button 
                         variant="destructive"
-                        onClick={handleLogout}
-                        className="bg-error-500 text-theme-surface hover:bg-error-600 transition-colors elevation-1"
+                        className="bg-red-600 hover:bg-red-700 text-white transition-colors"
                       >
-                        Logout
+                        Delete Account
                       </Button>
                     </div>
                   </div>
