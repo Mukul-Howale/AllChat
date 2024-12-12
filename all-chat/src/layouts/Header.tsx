@@ -42,9 +42,9 @@ const Header: React.FC<HeaderProps> = observer(({ hideNavigation = false, user }
   // Prevent hydration mismatch by not rendering user-dependent content on server
   if (!mounted) {
     return (
-      <header className="bg-background text-foreground px-4 lg:px-6 h-14 flex items-center border-b border-border">
+      <header className="bg-theme-surface text-theme-foreground px-4 lg:px-6 h-14 flex items-center border-b border-theme-border elevation-1">
         <Link className="flex items-center justify-center" href="/">
-          <MessageSquare className="h-6 w-6" />
+          <MessageSquare className="h-6 w-6 text-theme-primary" />
           <span className="ml-2 text-2xl font-bold">AllChat</span>
         </Link>
       </header>
@@ -52,36 +52,41 @@ const Header: React.FC<HeaderProps> = observer(({ hideNavigation = false, user }
   }
 
   return (
-    <header className="bg-background text-foreground px-4 lg:px-6 h-14 flex items-center border-b border-border">
+    <header className="bg-theme-surface text-theme-foreground px-4 lg:px-6 h-14 flex items-center border-b border-theme-border elevation-1">
       <Link className="flex items-center justify-center" href="/">
-        <MessageSquare className="h-6 w-6" />
+        <MessageSquare className="h-6 w-6 text-theme-primary" />
         <span className="ml-2 text-2xl font-bold">AllChat</span>
       </Link>
       {!hideNavigation && (
         <nav className="ml-auto flex items-center gap-4 sm:gap-6">
-          <Link className="text-sm font-medium hover:underline underline-offset-4" href="#features">
+          <Link className="text-sm font-medium hover:text-theme-primary transition-colors" href="#features">
             Features
           </Link>
-          <Link className="text-sm font-medium hover:underline underline-offset-4" href="#how-it-works">
+          <Link className="text-sm font-medium hover:text-theme-primary transition-colors" href="#how-it-works">
             How It Works
           </Link>
           {headerUser ? (
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
-                <Button variant="ghost" className="flex items-center gap-2">
+                <Button variant="ghost" className="flex items-center gap-2 hover:bg-theme-surface-200">
                   <Avatar className="h-8 w-8">
                     <AvatarImage src={`https://api.dicebear.com/6.x/initials/svg?seed=${headerUser.name}`} />
-                    <AvatarFallback>{headerUser.name.charAt(0)}</AvatarFallback>
+                    <AvatarFallback className="bg-theme-primary-light text-theme-primary-dark">
+                      {headerUser.name.charAt(0)}
+                    </AvatarFallback>
                   </Avatar>
                   <span className="text-sm font-medium">{headerUser.name}</span>
                 </Button>
               </DropdownMenuTrigger>
-              <DropdownMenuContent align="end">
-                <DropdownMenuItem onSelect={() => router.push('/profile')}>
-                  <UserIcon className="mr-2 h-4 w-4" />
+              <DropdownMenuContent align="end" className="bg-theme-surface border-theme-border elevation-2">
+                <DropdownMenuItem onSelect={() => router.push('/profile')} className="hover:bg-theme-surface-200">
+                  <UserIcon className="mr-2 h-4 w-4 text-theme-primary" />
                   <span>Profile</span>
                 </DropdownMenuItem>
-                <DropdownMenuItem onSelect={handleLogout}>
+                <DropdownMenuItem 
+                  onSelect={handleLogout}
+                  className="text-error-500 hover:bg-error-50 hover:text-error-600"
+                >
                   <LogOut className="mr-2 h-4 w-4" />
                   <span>Logout</span>
                 </DropdownMenuItem>
@@ -91,7 +96,7 @@ const Header: React.FC<HeaderProps> = observer(({ hideNavigation = false, user }
             <Link href="/auth">
               <Button 
                 variant="outline" 
-                className="text-sm hover:bg-accent hover:text-accent-foreground transition-all duration-200 ease-in-out">
+                className="text-sm bg-theme-surface border-theme-border hover:bg-theme-surface-200 transition-all duration-200 ease-in-out elevation-1">
                 Login / Sign Up
               </Button>
             </Link>

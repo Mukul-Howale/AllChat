@@ -213,7 +213,7 @@ const VideoChat: React.FC = observer(() => {
         <div className="flex flex-col w-3/4 pr-4">
           {isWaiting && (
             <div className="flex items-center justify-center h-full">
-              <div className="flex flex-col items-center bg-theme-background p-6 rounded-lg shadow-md">
+              <div className="flex flex-col items-center bg-theme-surface p-6 rounded-lg elevation-2">
                 <Clock className="w-12 h-12 text-theme-primary mb-4" />
                 <p className="text-theme-foreground text-lg font-medium">
                   Waiting for a chat partner...
@@ -221,10 +221,10 @@ const VideoChat: React.FC = observer(() => {
               </div>
             </div>
           )}
-          <div className="flex-grow bg-theme-muted rounded-lg overflow-hidden mb-4">
+          <div className="flex-grow bg-theme-surface rounded-lg overflow-hidden mb-4 elevation-1">
             {renderVideoArea()}
           </div>
-          <div className="flex items-center justify-between">
+          <div className="flex items-center justify-between p-2 bg-theme-surface rounded-lg elevation-1">
             <MediaControls
               isVideoOn={isVideoOn}
               isAudioOn={isAudioOn}
@@ -240,20 +240,25 @@ const VideoChat: React.FC = observer(() => {
               handleStopChat={handleStopChat}
               handleNextChat={handleNextChat}
             />
-            <div className="w-1/4"></div> {/* Spacer for alignment */}
+            <div className="w-1/4"></div>
           </div>
         </div>
         <div className="w-1/4 flex flex-col">
-          <div className="flex-grow bg-theme-accent rounded-lg overflow-hidden">
+          <div className="flex-grow bg-theme-surface rounded-lg overflow-hidden elevation-1">
             <TextChat
               isChatActive={isChatActive}
               onSendMessage={handleSendMessage}
               messages={messages}
-              className="bg-theme-background text-theme-foreground"
+              className="bg-theme-surface text-theme-foreground"
             />
           </div>
         </div>
       </div>
+      {error && (
+        <div className="absolute bottom-4 right-4 bg-error-500 text-white px-4 py-2 rounded-lg elevation-2">
+          {error}
+        </div>
+      )}
     </div>
   );
 });

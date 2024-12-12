@@ -68,107 +68,127 @@ const UserProfile = observer(() => {
     <div className="flex flex-col min-h-screen bg-theme-background text-theme-foreground">
       <Header />
       <main className="flex-grow flex items-center justify-center p-4">
-        <Card className="w-full max-w-3xl mx-auto bg-theme-background border-theme-border">
-          <CardHeader>
-            <div className="flex items-center space-x-4">
-              <Avatar className="w-20 h-20">
-                <img
-                  alt="User avatar"
-                  src={`https://api.dicebear.com/6.x/initials/svg?seed=${currentUser.name}`}
-                  style={{ width: '100%', height: '100%' }}
-                />
-              </Avatar>
-              <div>
-                <CardTitle className="text-theme-foreground">{currentUser.name}</CardTitle>
-                <CardDescription className="text-theme-muted">User Profile</CardDescription>
+        <div className="container mx-auto px-4 py-8">
+          <div className="max-w-2xl mx-auto">
+            <div className="bg-theme-surface rounded-lg p-6 shadow-md elevation-1">
+              <div className="flex items-center space-x-4 mb-6">
+                <Avatar className="h-20 w-20">
+                  <img
+                    alt="User avatar"
+                    src={`https://api.dicebear.com/6.x/initials/svg?seed=${currentUser.name}`}
+                    style={{ width: '100%', height: '100%' }}
+                  />
+                </Avatar>
+                <div>
+                  <h1 className="text-2xl font-bold text-theme-foreground">{currentUser.name}</h1>
+                  <p className="text-theme-foreground/60">{currentUser.email}</p>
+                </div>
+              </div>
+
+              <div className="space-y-6">
+                <div>
+                  <h2 className="text-lg font-semibold text-theme-foreground mb-4">Profile Settings</h2>
+                  <form onSubmit={handleSaveProfile} className="space-y-4">
+                    <div className="space-y-2">
+                      <Label htmlFor="name" className="text-theme-foreground/90">Display Name</Label>
+                      <Input
+                        id="name"
+                        value={name}
+                        onChange={(e) => setName(e.target.value)}
+                        className="bg-theme-surface border-theme-border focus:border-theme-primary"
+                      />
+                    </div>
+
+                    <div className="space-y-2">
+                      <Label htmlFor="email" className="text-theme-foreground/90">Email</Label>
+                      <Input
+                        id="email"
+                        value={email}
+                        onChange={(e) => setEmail(e.target.value)}
+                        className="bg-theme-surface border-theme-border focus:border-theme-primary"
+                      />
+                    </div>
+
+                    <div className="space-y-2">
+                      <Label htmlFor="username" className="text-theme-foreground/90">Username</Label>
+                      <Input
+                        id="username"
+                        value={username}
+                        onChange={(e) => setUsername(e.target.value)}
+                        className="bg-theme-surface border-theme-border focus:border-theme-primary"
+                      />
+                    </div>
+
+                    <div className="space-y-2">
+                      <Label htmlFor="phone" className="text-theme-foreground/90">Phone Number (Optional)</Label>
+                      <Input
+                        id="phone"
+                        type="tel"
+                        value={phoneNumber}
+                        onChange={(e) => setPhoneNumber(e.target.value)}
+                        placeholder="Enter your phone number"
+                        className="bg-theme-surface border-theme-border focus:border-theme-primary"
+                      />
+                    </div>
+
+                    <div className="flex items-center space-x-2 text-theme-muted">
+                      <Users size={20} />
+                      <span>{friendsCount} friends</span>
+                    </div>
+                    <div className="flex items-center space-x-2 text-theme-muted">
+                      <MessageSquare size={20} />
+                      <span>{messages} messages</span>
+                    </div>
+                    <div className="flex items-center space-x-2 text-theme-muted">
+                      <Bell size={20} />
+                      <span>{notifications} notifications</span>
+                    </div>
+                    <div className="flex items-center space-x-4 text-theme-muted">
+                      <div className="flex items-center space-x-2">
+                        <ThumbsUp size={20} />
+                        <span>{thumbsUp}</span>
+                      </div>
+                      <div className="flex items-center space-x-2">
+                        <ThumbsDown size={20} />
+                        <span>{thumbsDown}</span>
+                      </div>
+                    </div>
+
+                    <div className="pt-4">
+                      <Button 
+                        type="submit"
+                        className="bg-theme-primary text-theme-surface hover:bg-theme-primary-600 transition-colors elevation-1"
+                      >
+                        Save Changes
+                      </Button>
+                    </div>
+                  </form>
+                </div>
+
+                <div>
+                  <h2 className="text-lg font-semibold text-theme-foreground mb-4">Account Settings</h2>
+                  <div className="space-y-4">
+                    <div className="flex items-center justify-between p-4 bg-theme-surface-100 rounded-md">
+                      <div>
+                        <h3 className="font-medium text-theme-foreground">Delete Account</h3>
+                        <p className="text-sm text-theme-foreground/60">
+                          Permanently delete your account and all associated data
+                        </p>
+                      </div>
+                      <Button 
+                        variant="destructive"
+                        onClick={handleLogout}
+                        className="bg-error-500 text-theme-surface hover:bg-error-600 transition-colors elevation-1"
+                      >
+                        Logout
+                      </Button>
+                    </div>
+                  </div>
+                </div>
               </div>
             </div>
-          </CardHeader>
-          <CardContent className="space-y-4">
-            <form onSubmit={handleSaveProfile} className="space-y-4">
-              <div className="space-y-2">
-                <Label htmlFor="name" className="text-theme-foreground">Name</Label>
-                <Input
-                  id="name"
-                  type="text"
-                  value={name}
-                  onChange={(e) => setName(e.target.value)}
-                  className="bg-theme-background text-theme-foreground border-theme-input"
-                />
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="email" className="text-theme-foreground">Email</Label>
-                <Input
-                  id="email"
-                  type="email"
-                  value={email}
-                  onChange={(e) => setEmail(e.target.value)}
-                  className="bg-theme-background text-theme-foreground border-theme-input"
-                />
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="username" className="text-theme-foreground">Username</Label>
-                <Input
-                  id="username"
-                  type="text"
-                  value={username}
-                  onChange={(e) => setUsername(e.target.value)}
-                  className="bg-theme-background text-theme-foreground border-theme-input"
-                />
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="phone" className="text-theme-foreground">Phone Number (Optional)</Label>
-                <Input
-                  id="phone"
-                  type="tel"
-                  value={phoneNumber}
-                  onChange={(e) => setPhoneNumber(e.target.value)}
-                  placeholder="Enter your phone number"
-                  className="bg-theme-background text-theme-foreground border-theme-input"
-                />
-              </div>
-              <div className="flex items-center space-x-2 text-theme-muted">
-                <Users size={20} />
-                <span>{friendsCount} friends</span>
-              </div>
-              <div className="flex items-center space-x-2 text-theme-muted">
-                <MessageSquare size={20} />
-                <span>{messages} messages</span>
-              </div>
-              <div className="flex items-center space-x-2 text-theme-muted">
-                <Bell size={20} />
-                <span>{notifications} notifications</span>
-              </div>
-              <div className="flex items-center space-x-4 text-theme-muted">
-                <div className="flex items-center space-x-2">
-                  <ThumbsUp size={20} />
-                  <span>{thumbsUp}</span>
-                </div>
-                <div className="flex items-center space-x-2">
-                  <ThumbsDown size={20} />
-                  <span>{thumbsDown}</span>
-                </div>
-              </div>
-              <div className="flex items-center space-x-2">
-                <Switch id="paid-user" checked={isPaidUser} disabled />
-                <Label htmlFor="paid-user" className="text-theme-foreground">
-                  {isPaidUser ? 'Paid User' : 'Free User'}
-                </Label>
-              </div>
-              <div className="flex space-x-4">
-                <Button type="submit" className="bg-theme-button hover:bg-theme-button-hover text-theme-foreground">Save Profile</Button>
-                <Button 
-                  type="button" 
-                  variant="destructive" 
-                  onClick={handleLogout}
-                  className="bg-theme-button-destructive hover:bg-theme-button-destructive-hover text-theme-foreground"
-                >
-                  Logout
-                </Button>
-              </div>
-            </form>
-          </CardContent>
-        </Card>
+          </div>
+        </div>
       </main>
       <Footer />
     </div>

@@ -10,12 +10,13 @@ import { observer } from 'mobx-react-lite';
 import { useStore } from '@/contexts/StoreContext';
 import { v4 as uuidv4 } from 'uuid';
 import { checkUserSignedUp, getAllUsersFromLocalStorage } from '@/utils/auth';
+import { MessageSquare, Chrome } from '@/components/icons';
 
 const AuthPage = observer(() => {
   const router = useRouter();
   const store = useStore();
 
-  const [isSignUp, setIsSignUp] = useState(false);
+  const [isLogin, setIsLogin] = useState(false);
   const [name, setName] = useState('');
   const [username, setUsername] = useState('');
   const [email, setEmail] = useState('');
@@ -25,7 +26,7 @@ const AuthPage = observer(() => {
     e.preventDefault();
 
     try {
-      if (isSignUp) {
+      if (!isLogin) {
         // Signup process - store user data in local storage
         const userData = {
           id: uuidv4(),
@@ -48,7 +49,7 @@ const AuthPage = observer(() => {
           router.push('/video-chat');
         } else {
           // User not signed up, redirect to signup
-          setIsSignUp(true);
+          setIsLogin(false);
         }
       }
     } catch (error) {
@@ -56,8 +57,8 @@ const AuthPage = observer(() => {
     }
   };
 
-  const handleGoogleAuth = () => {
-    if (isSignUp) {
+  const handleGoogleSignIn = () => {
+    if (!isLogin) {
       const googleUser = { 
         id: uuidv4(), 
         name: 'Google User', 
@@ -76,99 +77,118 @@ const AuthPage = observer(() => {
         store.userStore.login(existingUser);
         router.push('/video-chat');
       } else {
-        setIsSignUp(true);
+        setIsLogin(false);
       }
     }
   };
 
   return (
-    <div className="flex flex-col min-h-screen bg-background text-foreground">
-      <Header />
-      <div className="flex-grow flex items-center justify-center p-4">
-        <Card className="w-full max-w-[800px] bg-card border-border flex flex-col md:flex-row">
-          <div className="md:w-1/3 p-6 flex flex-col justify-center items-center border-r border-border">
-            <Button 
-              onClick={handleGoogleAuth} 
-              className="w-full bg-primary hover:bg-primary/90 text-primary-foreground text-sm h-10 mb-4"
-            >
-              {isSignUp ? 'Sign up' : 'Continue'} with Google
-            </Button>
+    <div className="container relative min-h-screen flex-col items-center justify-center grid lg:max-w-none lg:grid-cols-2 lg:px-0">
+      <div className="relative hidden h-full flex-col bg-theme-surface p-10 text-theme-foreground dark:border-r lg:flex elevation-1">
+        <div className="absolute inset-0 bg-theme-surface-100" />
+        <div className="relative z-20 flex items-center text-lg font-medium">
+          <MessageSquare className="mr-2 h-6 w-6 text-theme-primary" />
+          AllChat
+        </div>
+        <div className="relative z-20 mt-auto">
+          <blockquote className="space-y-2">
+            <p className="text-lg text-theme-foreground/90">
+              Connect with anyone, anywhere, instantly. Experience seamless video chat with AllChat.
+            </p>
+            <footer className="text-sm text-theme-foreground/60">Sofia Davis</footer>
+          </blockquote>
+        </div>
+      </div>
+      <div className="lg:p-8">
+        <div className="mx-auto flex w-full flex-col justify-center space-y-6 sm:w-[350px]">
+          <div className="flex flex-col space-y-2 text-center">
+            <h1 className="text-2xl font-semibold tracking-tight text-theme-foreground">
+              {isLogin ? 'Welcome back' : 'Create an account'}
+            </h1>
+            <p className="text-sm text-theme-foreground/60">
+              {isLogin ? 'Enter your credentials to continue' : 'Enter your information to get started'}
+            </p>
           </div>
-          <div className="md:w-2/3 p-6">
-            <CardHeader className="p-0 mb-4">
-              <CardTitle>{isSignUp ? 'Create an account' : 'Log in'}</CardTitle>
-              <CardDescription>
-                {isSignUp 
-                  ? 'Enter your details below to create your account' 
-                  : 'Enter your details below to log in to your account'}
-              </CardDescription>
-            </CardHeader>
-            <CardContent className="space-y-4 p-0">
-              <form onSubmit={handleSubmit} className="space-y-3">
-                {isSignUp && (
-                  <>
-                    <div className="space-y-1">
-                      <Label htmlFor="name">Name</Label>
-                      <Input 
-                        id="name" 
-                        type="text" 
-                        required 
-                        className="bg-background border-input h-10 text-sm" 
-                        value={name}
-                        onChange={(e) => setName(e.target.value)}
-                      />
-                    </div>
-                    <div className="space-y-1">
-                      <Label htmlFor="username">Username</Label>
-                      <Input 
-                        id="username" 
-                        type="text" 
-                        required 
-                        className="bg-background border-input h-10 text-sm" 
-                        value={username}
-                        onChange={(e) => setUsername(e.target.value)}
-                      />
-                    </div>
-                  </>
+          <div className="grid gap-6">
+            <form onSubmit={handleSubmit}>
+              <div className="grid gap-4">
+                {!isLogin && (
+                  <div className="grid gap-2">
+                    <Label htmlFor="name" className="text-theme-foreground/90">Name</Label>
+                    <Input
+                      id="name"
+                      placeholder="John Doe"
+                      type="text"
+                      autoCapitalize="none"
+                      autoCorrect="off"
+                      value={name}
+                      onChange={(e) => setName(e.target.value)}
+                      className="bg-theme-surface border-theme-border focus:border-theme-primary"
+                    />
+                  </div>
                 )}
-                <div className="space-y-1">
-                  <Label htmlFor="email">Email</Label>
-                  <Input 
-                    id="email" 
-                    type="email" 
-                    required 
-                    className="bg-background border-input h-10 text-sm" 
+                <div className="grid gap-2">
+                  <Label htmlFor="email" className="text-theme-foreground/90">Email</Label>
+                  <Input
+                    id="email"
+                    placeholder="name@example.com"
+                    type="email"
+                    autoCapitalize="none"
+                    autoComplete="email"
+                    autoCorrect="off"
                     value={email}
                     onChange={(e) => setEmail(e.target.value)}
+                    className="bg-theme-surface border-theme-border focus:border-theme-primary"
                   />
                 </div>
-                <div className="space-y-1">
-                  <Label htmlFor="password">Password</Label>
-                  <Input 
-                    id="password" 
-                    type="password" 
-                    required 
-                    className="bg-background border-input h-10 text-sm" 
+                <div className="grid gap-2">
+                  <Label htmlFor="password" className="text-theme-foreground/90">Password</Label>
+                  <Input
+                    id="password"
+                    type="password"
                     value={password}
                     onChange={(e) => setPassword(e.target.value)}
+                    className="bg-theme-surface border-theme-border focus:border-theme-primary"
                   />
                 </div>
-                <Button type="submit" className="w-full bg-primary hover:bg-primary/90 text-primary-foreground">
-                  {isSignUp ? 'Create Account' : 'Log In'}
-                </Button>
-              </form>
-              <div className="text-center">
-                <button
-                  type="button"
-                  onClick={() => setIsSignUp(!isSignUp)}
-                  className="text-sm text-muted-foreground hover:text-primary"
+                <Button 
+                  type="submit" 
+                  className="bg-theme-primary text-theme-surface hover:bg-theme-primary-600 transition-colors elevation-1"
                 >
-                  {isSignUp ? 'Already have an account? Log in' : "Don't have an account? Sign up"}
-                </button>
+                  {isLogin ? 'Sign In' : 'Sign Up'}
+                </Button>
               </div>
-            </CardContent>
+            </form>
+            <div className="relative">
+              <div className="absolute inset-0 flex items-center">
+                <span className="w-full border-t border-theme-border" />
+              </div>
+              <div className="relative flex justify-center text-xs uppercase">
+                <span className="bg-theme-surface px-2 text-theme-foreground/60">
+                  Or continue with
+                </span>
+              </div>
+            </div>
+            <Button 
+              variant="outline" 
+              type="button" 
+              onClick={handleGoogleSignIn}
+              className="bg-theme-surface border-theme-border hover:bg-theme-surface-100 transition-colors elevation-1"
+            >
+              <Chrome className="mr-2 h-4 w-4 text-theme-primary" />
+              Google
+            </Button>
           </div>
-        </Card>
+          <p className="px-8 text-center text-sm text-theme-foreground/60">
+            {isLogin ? "Don't have an account? " : "Already have an account? "}
+            <button
+              onClick={() => setIsLogin(!isLogin)}
+              className="underline text-theme-primary hover:text-theme-primary-600 transition-colors"
+            >
+              {isLogin ? 'Sign up' : 'Sign in'}
+            </button>
+          </p>
+        </div>
       </div>
     </div>
   );

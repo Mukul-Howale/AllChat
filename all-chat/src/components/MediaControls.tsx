@@ -20,14 +20,22 @@ const MediaControls: React.FC<MediaControlsProps> = ({
       <Button
         onClick={toggleVideo}
         variant="outline"
-        className="bg-gray-700 text-white hover:bg-gray-600"
+        className={`elevation-1 ${
+          isVideoOn 
+            ? 'bg-theme-surface text-theme-foreground hover:bg-theme-surface-200' 
+            : 'bg-theme-surface-800 text-error-200 hover:bg-theme-surface-700'
+        }`}
       >
         {isVideoOn ? <Video size={24} /> : <VideoOff size={24} />}
       </Button>
       <Button
         onClick={toggleAudio}
         variant="outline"
-        className="bg-gray-700 text-white hover:bg-gray-600"
+        className={`elevation-1 ${
+          isAudioOn 
+            ? 'bg-theme-surface text-theme-foreground hover:bg-theme-surface-200' 
+            : 'bg-theme-surface-800 text-error-200 hover:bg-theme-surface-700'
+        }`}
       >
         {isAudioOn ? <Mic size={24} /> : <MicOff size={24} />}
       </Button>
