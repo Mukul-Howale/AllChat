@@ -7,6 +7,7 @@ import Header from '../layouts/Header'
 import Footer from '../layouts/Footer'
 import { observer } from 'mobx-react-lite'
 import { useStore } from '@/contexts/StoreContext'
+import styles from '@/styles/shared.module.css'
 
 const LandingPage = observer(() => {
   const router = useRouter();
@@ -17,7 +18,6 @@ const LandingPage = observer(() => {
     router.push('/video-chat');
   };
 
-  // Render the landing page
   return (
     <div className="flex flex-col min-h-screen bg-background text-foreground">
       <Header user={currentUser ?? undefined} />
@@ -34,8 +34,8 @@ const LandingPage = observer(() => {
                 </p>
               </div>
               <div className="space-x-4">
-                <Button onClick={handleStartChatting} variant="default">Start Chatting</Button>
-                <Button variant="outline">Learn More</Button>
+                <Button onClick={handleStartChatting} variant="default" className={styles.button}>Start Chatting</Button>
+                <Button variant="outline" className={styles.button}>Learn More</Button>
               </div>
             </div>
           </div>
@@ -44,17 +44,17 @@ const LandingPage = observer(() => {
           <div className="container px-4 md:px-6">
             <h2 className="text-3xl font-bold tracking-tighter sm:text-5xl text-center mb-12">Why Choose AllChat?</h2>
             <div className="grid gap-10 sm:grid-cols-2 md:grid-cols-3">
-              <div className="flex flex-col items-center text-center">
+              <div className={`flex flex-col items-center text-center p-6 bg-background ${styles.card}`}>
                 <Users className="h-12 w-12 mb-4 text-primary" />
                 <h3 className="text-xl font-bold mb-2">Meet New People</h3>
                 <p className="text-muted-foreground">Connect with individuals from diverse backgrounds and cultures.</p>
               </div>
-              <div className="flex flex-col items-center text-center">
+              <div className={`flex flex-col items-center text-center p-6 bg-background ${styles.card}`}>
                 <Zap className="h-12 w-12 mb-4 text-primary" />
                 <h3 className="text-xl font-bold mb-2">Instant Connections</h3>
                 <p className="text-muted-foreground">No waiting or swiping. Get matched with someone instantly.</p>
               </div>
-              <div className="flex flex-col items-center text-center">
+              <div className={`flex flex-col items-center text-center p-6 bg-background ${styles.card}`}>
                 <Shield className="h-12 w-12 mb-4 text-primary" />
                 <h3 className="text-xl font-bold mb-2">Safe and Anonymous</h3>
                 <p className="text-muted-foreground">Your privacy is our priority. Chat safely and anonymously.</p>
@@ -66,18 +66,18 @@ const LandingPage = observer(() => {
           <div className="container px-4 md:px-6">
             <h2 className="text-3xl font-bold tracking-tighter sm:text-5xl text-center mb-12">How It Works</h2>
             <div className="grid gap-8 md:grid-cols-3">
-              <div className="flex flex-col items-center text-center">
-                <div className="w-12 h-12 rounded-full bg-primary text-primary-foreground flex items-center justify-center text-2xl font-bold mb-4">1</div>
+              <div className={`flex flex-col items-center text-center p-6 bg-background ${styles.card}`}>
+                <div className={`w-12 h-12 bg-primary text-primary-foreground flex items-center justify-center text-2xl font-bold mb-4 ${styles.container}`}>1</div>
                 <h3 className="text-xl font-bold mb-2">Click "Start Chatting"</h3>
                 <p className="text-muted-foreground">Begin your journey with a single click.</p>
               </div>
-              <div className="flex flex-col items-center text-center">
-                <div className="w-12 h-12 rounded-full bg-primary text-primary-foreground flex items-center justify-center text-2xl font-bold mb-4">2</div>
+              <div className={`flex flex-col items-center text-center p-6 bg-background ${styles.card}`}>
+                <div className={`w-12 h-12 bg-primary text-primary-foreground flex items-center justify-center text-2xl font-bold mb-4 ${styles.container}`}>2</div>
                 <h3 className="text-xl font-bold mb-2">Get Matched</h3>
                 <p className="text-muted-foreground">Our system pairs you with a random stranger.</p>
               </div>
-              <div className="flex flex-col items-center text-center">
-                <div className="w-12 h-12 rounded-full bg-primary text-primary-foreground flex items-center justify-center text-2xl font-bold mb-4">3</div>
+              <div className={`flex flex-col items-center text-center p-6 bg-background ${styles.card}`}>
+                <div className={`w-12 h-12 bg-primary text-primary-foreground flex items-center justify-center text-2xl font-bold mb-4 ${styles.container}`}>3</div>
                 <h3 className="text-xl font-bold mb-2">Start Chatting</h3>
                 <p className="text-muted-foreground">Begin a conversation and make new connections.</p>
               </div>
@@ -97,8 +97,8 @@ const LandingPage = observer(() => {
               </div>
               <div className="w-full max-w-sm space-y-2">
                 <form className="flex space-x-2">
-                  <Input className="max-w-lg flex-1 bg-card border-border text-foreground" placeholder="Enter your email" type="email" />
-                  <Button type="submit">Sign Up</Button>
+                  <Input className={`max-w-lg flex-1 bg-card border-border text-foreground ${styles.input}`} placeholder="Enter your email" type="email" />
+                  <Button type="submit" className={styles.button}>Sign Up</Button>
                 </form>
                 <p className="text-xs text-muted-foreground">
                   By signing up, you agree to our{" "}

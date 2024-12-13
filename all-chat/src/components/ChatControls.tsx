@@ -1,12 +1,13 @@
 import React from 'react';
 import { Button } from "@/components/ui/button"
 import { Users } from 'lucide-react';
+import styles from '@/styles/shared.module.css';
 
 interface ChatControlsProps {
   groupSize: number | 'any';
   setGroupSize: (size: number | 'any') => void;
   isChatActive: boolean;
-  isWaiting: boolean; // New prop
+  isWaiting: boolean;
   handleStartChat: () => void;
   handleStopChat: () => void;
   handleNextChat: () => void;
@@ -16,7 +17,7 @@ const ChatControls: React.FC<ChatControlsProps> = ({
   groupSize,
   setGroupSize,
   isChatActive,
-  isWaiting, // New prop
+  isWaiting,
   handleStartChat,
   handleStopChat,
   handleNextChat
@@ -40,7 +41,7 @@ const ChatControls: React.FC<ChatControlsProps> = ({
           onClick={handleDecrease}
           disabled={isChatActive || isWaiting || groupSize === 2}
           variant="outline"
-          className="bg-theme-primary text-theme-primary-foreground hover:bg-theme-primary/90"
+          className={`bg-theme-primary text-theme-primary-foreground hover:bg-theme-primary/90 ${styles.button}`}
         >
           -
         </Button>
@@ -54,29 +55,40 @@ const ChatControls: React.FC<ChatControlsProps> = ({
           onClick={handleIncrease}
           disabled={isChatActive || isWaiting || groupSize === 4}
           variant="outline"
-          className="bg-theme-primary text-theme-primary-foreground hover:bg-theme-primary/90"
+          className={`bg-theme-primary text-theme-primary-foreground hover:bg-theme-primary/90 ${styles.button}`}
         >
           +
         </Button>
       </div>
-      <Button 
-        className={`px-6 py-2 font-medium ${
-          isChatActive || isWaiting 
-            ? 'bg-theme-destructive text-theme-destructive-foreground hover:bg-theme-destructive/90' 
-            : 'bg-theme-primary text-theme-primary-foreground hover:bg-theme-primary/90'
-        }`}
-        onClick={isChatActive || isWaiting ? handleStopChat : handleStartChat}
-      >
-        {isChatActive ? 'Stop Chat' : isWaiting ? 'Cancel' : 'Start Chat'}
-      </Button>
-      {isChatActive && (
-        <Button 
-          className="px-6 py-2 bg-theme-secondary text-theme-secondary-foreground hover:bg-theme-secondary/90 font-medium" 
-          onClick={handleNextChat}
-        >
-          Next
-        </Button>
-      )}
+      <div className="space-x-2">
+        {!isChatActive && !isWaiting && (
+          <Button
+            onClick={handleStartChat}
+            variant="default"
+            className={`bg-theme-primary text-theme-primary-foreground hover:bg-theme-primary/90 ${styles.button}`}
+          >
+            Start Chat
+          </Button>
+        )}
+        {isChatActive && (
+          <>
+            <Button
+              onClick={handleNextChat}
+              variant="outline"
+              className={`bg-theme-surface text-theme-foreground hover:bg-theme-surface-100 ${styles.button}`}
+            >
+              Next
+            </Button>
+            <Button
+              onClick={handleStopChat}
+              variant="destructive"
+              className={`bg-error-500 text-white hover:bg-error-600 ${styles.button}`}
+            >
+              Stop
+            </Button>
+          </>
+        )}
+      </div>
     </div>
   );
 };

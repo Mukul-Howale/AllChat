@@ -1,6 +1,7 @@
 import React from 'react';
 import { Button } from "@/components/ui/button"
 import { Video, VideoOff, Mic, MicOff } from 'lucide-react';
+import styles from '@/styles/shared.module.css';
 
 interface MediaControlsProps {
   isVideoOn: boolean;
@@ -20,7 +21,7 @@ const MediaControls: React.FC<MediaControlsProps> = ({
       <Button
         onClick={toggleVideo}
         variant="outline"
-        className={`elevation-1 ${
+        className={`elevation-1 ${styles.button} ${
           isVideoOn 
             ? 'bg-theme-surface text-theme-foreground hover:bg-theme-surface-200' 
             : 'bg-theme-surface-800 text-error-200 hover:bg-theme-surface-700'
@@ -31,7 +32,7 @@ const MediaControls: React.FC<MediaControlsProps> = ({
       <Button
         onClick={toggleAudio}
         variant="outline"
-        className={`elevation-1 ${
+        className={`elevation-1 ${styles.button} ${
           isAudioOn 
             ? 'bg-theme-surface text-theme-foreground hover:bg-theme-surface-200' 
             : 'bg-theme-surface-800 text-error-200 hover:bg-theme-surface-700'

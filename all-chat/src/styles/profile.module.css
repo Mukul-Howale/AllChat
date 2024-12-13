@@ -1,0 +1,17 @@
+/* Override default rounded corners for inputs and buttons */
+.roundedElement {
+  border-radius: 0.75rem !important; /* equivalent to rounded-xl */
+}
+
+/* Ensure the override takes precedence */
+.input {
+  composes: roundedElement;
+}
+
+.button {
+  composes: roundedElement;
+}
+
+.dangerBox {
+  composes: roundedElement;
+}

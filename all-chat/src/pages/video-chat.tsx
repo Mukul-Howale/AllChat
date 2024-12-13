@@ -8,6 +8,7 @@ import TextChat from '../components/TextChat';
 import MediaControls from '../components/MediaControls';
 import Header from '../layouts/Header';
 import { useRouter } from 'next/router';
+import styles from '@/styles/shared.module.css';
 
 const VideoChat: React.FC = observer(() => {
   const router = useRouter();
@@ -213,7 +214,7 @@ const VideoChat: React.FC = observer(() => {
         <div className="flex flex-col w-3/4 pr-4">
           {isWaiting && (
             <div className="flex items-center justify-center h-full">
-              <div className="flex flex-col items-center bg-theme-surface p-6 rounded-lg elevation-2">
+              <div className={`flex flex-col items-center bg-theme-surface p-6 elevation-2 ${styles.container}`}>
                 <Clock className="w-12 h-12 text-theme-primary mb-4" />
                 <p className="text-theme-foreground text-lg font-medium">
                   Waiting for a chat partner...
@@ -221,10 +222,10 @@ const VideoChat: React.FC = observer(() => {
               </div>
             </div>
           )}
-          <div className="flex-grow bg-theme-surface rounded-lg overflow-hidden mb-4 elevation-1">
+          <div className={`flex-grow bg-theme-surface overflow-hidden mb-4 elevation-1 ${styles.container}`}>
             {renderVideoArea()}
           </div>
-          <div className="flex items-center justify-between p-2 bg-theme-surface rounded-lg elevation-1">
+          <div className={`flex items-center justify-between p-2 bg-theme-surface elevation-1 ${styles.container}`}>
             <MediaControls
               isVideoOn={isVideoOn}
               isAudioOn={isAudioOn}
@@ -244,7 +245,7 @@ const VideoChat: React.FC = observer(() => {
           </div>
         </div>
         <div className="w-1/4 flex flex-col">
-          <div className="flex-grow bg-theme-surface rounded-lg overflow-hidden elevation-1">
+          <div className={`flex-grow bg-theme-surface overflow-hidden elevation-1 ${styles.container}`}>
             <TextChat
               isChatActive={isChatActive}
               onSendMessage={handleSendMessage}
@@ -255,7 +256,7 @@ const VideoChat: React.FC = observer(() => {
         </div>
       </div>
       {error && (
-        <div className="absolute bottom-4 right-4 bg-error-500 text-white px-4 py-2 rounded-lg elevation-2">
+        <div className={`absolute bottom-4 right-4 bg-error-500 text-white px-4 py-2 elevation-2 ${styles.container}`}>
           {error}
         </div>
       )}

@@ -1,0 +1,19 @@
+.roundedElement {
+  border-radius: 0.75rem !important; /* equivalent to rounded-xl */
+}
+
+.input {
+  composes: roundedElement;
+}
+
+.button {
+  composes: roundedElement;
+}
+
+.card {
+  composes: roundedElement;
+}
+
+.container {
+  composes: roundedElement;
+}

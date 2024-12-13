@@ -1,5 +1,6 @@
 import React from 'react';
 import { User } from 'lucide-react';
+import styles from '@/styles/shared.module.css';
 
 interface VideoGridProps {
   groupSize: number | 'any';
@@ -23,7 +24,7 @@ const VideoGrid: React.FC<VideoGridProps> = ({ groupSize, localVideoRef, remoteV
   return (
     <div className={`grid ${gridClass} gap-2 w-full h-full`}>
       {Array.from({ length: totalWindows }, (_, index) => (
-        <div key={index} className="bg-gray-800 rounded-lg overflow-hidden relative">
+        <div key={index} className={`bg-gray-800 overflow-hidden relative ${styles.container}`}>
           {index === 0 ? (
             <video ref={localVideoRef} className="w-full h-full object-cover" autoPlay muted playsInline />
           ) : (
@@ -35,7 +36,7 @@ const VideoGrid: React.FC<VideoGridProps> = ({ groupSize, localVideoRef, remoteV
               </div>
             )
           )}
-          <div className="absolute bottom-2 left-2 bg-black bg-opacity-50 px-2 py-1 rounded text-white text-sm">
+          <div className={`absolute bottom-2 left-2 bg-black bg-opacity-50 px-2 py-1 text-white text-sm ${styles.container}`}>
             {index === 0 ? 'You' : `Person ${index + 1}`}
           </div>
         </div>
