@@ -2,215 +2,249 @@
 @tailwind components;
 @tailwind utilities;
 
-:root {
-  /* Material Design Color System */
-  
-  /* Primary Colors */
-  --primary-50: 142 76% 97%;
-  --primary-100: 142 75% 90%;
-  --primary-200: 142 74% 83%;
-  --primary-300: 142 73% 74%;
-  --primary-400: 142 72% 63%;
-  --primary-500: 142 70% 45%; /* Main primary color */
-  --primary-600: 142 69% 40%;
-  --primary-700: 142 68% 35%;
-  --primary-800: 142 67% 30%;
-  --primary-900: 142 66% 25%;
-  
-  /* Secondary Colors */
-  --secondary-50: 265 76% 97%;
-  --secondary-100: 265 75% 90%;
-  --secondary-200: 265 74% 83%;
-  --secondary-300: 265 73% 74%;
-  --secondary-400: 265 72% 63%;
-  --secondary-500: 265 70% 45%; /* Main secondary color */
-  --secondary-600: 265 69% 40%;
-  --secondary-700: 265 68% 35%;
-  --secondary-800: 265 67% 30%;
-  --secondary-900: 265 66% 25%;
+@layer base {
+  :root {
+    /* Modern Color System */
+    
+    /* Primary Colors - Vibrant Indigo */
+    --primary-50: 238 100% 98%;
+    --primary-100: 238 95% 95%;
+    --primary-200: 238 90% 90%;
+    --primary-300: 238 85% 83%;
+    --primary-400: 238 83% 73%;
+    --primary-500: 238 82% 63%;  /* Main primary color - More vibrant */
+    --primary-600: 238 75% 55%;
+    --primary-700: 238 70% 48%;
+    --primary-800: 238 65% 40%;
+    --primary-900: 238 60% 35%;
+    
+    /* Secondary Colors - Softer Emerald */
+    --secondary-50: 152 85% 98%;
+    --secondary-100: 152 80% 95%;
+    --secondary-200: 152 75% 90%;
+    --secondary-300: 152 70% 83%;
+    --secondary-400: 152 65% 70%;
+    --secondary-500: 152 60% 55%;  /* Main secondary color - Softer */
+    --secondary-600: 152 55% 48%;
+    --secondary-700: 152 50% 40%;
+    --secondary-800: 152 45% 35%;
+    --secondary-900: 152 40% 30%;
 
-  /* Surface Colors */
-  --surface-50: 0 0% 98%;
-  --surface-100: 0 0% 96%;
-  --surface-200: 0 0% 93%;
-  --surface-300: 0 0% 88%;
-  --surface-400: 0 0% 74%;
-  --surface-500: 0 0% 62%;
-  --surface-600: 0 0% 46%;
-  --surface-700: 0 0% 38%;
-  --surface-800: 0 0% 26%;
-  --surface-900: 0 0% 13%;
-  
-  /* Error Colors */
-  --error-50: 0 86% 97%;
-  --error-100: 0 85% 90%;
-  --error-200: 0 84% 83%;
-  --error-300: 0 83% 74%;
-  --error-400: 0 82% 63%;
-  --error-500: 0 84.2% 60.2%; /* Main error color */
-  --error-600: 0 72% 51%;
-  --error-700: 0 74% 42%;
-  --error-800: 0 70% 35%;
-  --error-900: 0 63% 31%;
+    /* Surface Colors - Refined Slate */
+    --surface-50: 210 45% 98%;
+    --surface-100: 210 40% 96%;
+    --surface-200: 214 35% 92%;
+    --surface-300: 213 30% 85%;
+    --surface-400: 215 25% 73%;
+    --surface-500: 215 20% 65%;
+    --surface-600: 215 25% 40%;
+    --surface-700: 215 30% 30%;
+    --surface-800: 217 35% 20%;
+    --surface-900: 222 40% 15%;
+    
+    /* Error Colors - Refined Rose */
+    --error-50: 354 100% 98%;
+    --error-100: 354 95% 95%;
+    --error-200: 354 90% 90%;
+    --error-300: 354 85% 83%;
+    --error-400: 354 80% 75%;
+    --error-500: 354 75% 65%;  /* Main error color - Softer */
+    --error-600: 354 70% 58%;
+    --error-700: 354 65% 50%;
+    --error-800: 354 60% 45%;
+    --error-900: 354 55% 40%;
 
-  /* System Colors */
-  --background: var(--surface-50);
-  --foreground: var(--surface-900);
-  --card: var(--surface-100);
-  --card-foreground: var(--surface-900);
-  --popover: var(--surface-50);
-  --popover-foreground: var(--surface-900);
-  --primary-main: var(--primary-500);
-  --primary-light: var(--primary-300);
-  --primary-dark: var(--primary-700);
-  --primary-foreground: var(--surface-50);
-  --secondary-main: var(--secondary-500);
-  --secondary-light: var(--secondary-300);
-  --secondary-dark: var(--secondary-700);
-  --secondary-foreground: var(--surface-50);
-  --muted: var(--surface-200);
-  --muted-foreground: var(--surface-700);
-  --accent: var(--secondary-200);
-  --accent-foreground: var(--secondary-800);
-  --destructive: var(--error-500);
-  --destructive-foreground: var(--surface-50);
-  --border: var(--surface-200);
-  --input: var(--surface-300);
-  --ring: var(--primary-500);
+    /* System Colors */
+    --background: var(--surface-50);
+    --foreground: var(--surface-900);
+    
+    --card: var(--surface-100);
+    --card-foreground: var(--surface-900);
+    
+    --popover: var(--surface-100);
+    --popover-foreground: var(--surface-900);
+    
+    --primary-main: var(--primary-500);
+    --primary-light: var(--primary-400);
+    --primary-dark: var(--primary-600);
+    --primary-foreground: white;
+    
+    --secondary-main: var(--secondary-500);
+    --secondary-light: var(--secondary-400);
+    --secondary-dark: var(--secondary-600);
+    --secondary-foreground: white;
+    
+    --muted: var(--surface-200);
+    --muted-foreground: var(--surface-600);
+    
+    --accent: var(--primary-100);
+    --accent-foreground: var(--primary-900);
+    
+    --destructive: var(--error-500);
+    --destructive-foreground: white;
 
-  /* Elevation Shadows */
-  --shadow-1: 0 2px 1px -1px rgba(0,0,0,0.2),
-              0 1px 1px 0 rgba(0,0,0,0.14),
-              0 1px 3px 0 rgba(0,0,0,0.12);
-  --shadow-2: 0 3px 1px -2px rgba(0,0,0,0.2),
-              0 2px 2px 0 rgba(0,0,0,0.14),
-              0 1px 5px 0 rgba(0,0,0,0.12);
-  --shadow-3: 0 3px 3px -2px rgba(0,0,0,0.2),
-              0 3px 4px 0 rgba(0,0,0,0.14),
-              0 1px 8px 0 rgba(0,0,0,0.12);
+    --border: var(--surface-200);
+    --input: var(--surface-200);
+    --ring: var(--primary-500);
+    
+    --radius: 0.5rem;
+
+    /* Enhanced Shadows */
+    --shadow-1: 0 2px 4px -2px rgba(0, 0, 0, 0.06),
+                0 4px 8px -2px rgba(0, 0, 0, 0.1);
+    --shadow-2: 0 4px 6px -2px rgba(0, 0, 0, 0.03),
+                0 12px 16px -4px rgba(0, 0, 0, 0.08);
+    --shadow-3: 0 12px 24px -6px rgba(0, 0, 0, 0.05),
+                0 24px 32px -8px rgba(0, 0, 0, 0.05);
+                
+    /* Glow Effects */
+    --glow-primary: 0 0 0 2px hsl(var(--background)),
+                    0 0 0 4px hsl(var(--primary-200));
+    --glow-error: 0 0 0 2px hsl(var(--background)),
+                  0 0 0 4px hsl(var(--error-200));
+  }
+
+  .dark {
+    --background: var(--surface-900);
+    --foreground: var(--surface-50);
+    
+    --card: var(--surface-800);
+    --card-foreground: var(--surface-100);
+    
+    --popover: var(--surface-800);
+    --popover-foreground: var(--surface-100);
+    
+    --primary-main: var(--primary-400);
+    --primary-light: var(--primary-300);
+    --primary-dark: var(--primary-500);
+    
+    --secondary-main: var(--secondary-400);
+    --secondary-light: var(--secondary-300);
+    --secondary-dark: var(--secondary-500);
+    
+    --muted: var(--surface-700);
+    --muted-foreground: var(--surface-400);
+    
+    --accent: var(--primary-900);
+    --accent-foreground: var(--primary-100);
+    
+    --destructive: var(--error-500);
+    --destructive-foreground: var(--surface-100);
+    
+    --border: var(--surface-700);
+    --input: var(--surface-700);
+    --ring: var(--primary-400);
+  }
 }
 
-/* Dark mode overrides */
-.dark {
-  --background: var(--surface-900);
-  --foreground: var(--surface-50);
-  --card: var(--surface-800);
-  --card-foreground: var(--surface-50);
-  --popover: var(--surface-800);
-  --popover-foreground: var(--surface-50);
-  --primary-main: var(--primary-300);
-  --primary-light: var(--primary-200);
-  --primary-dark: var(--primary-400);
-  --primary-foreground: var(--surface-900);
-  --secondary-main: var(--secondary-300);
-  --secondary-light: var(--secondary-200);
-  --secondary-dark: var(--secondary-400);
-  --secondary-foreground: var(--surface-900);
-  --muted: var(--surface-700);
-  --muted-foreground: var(--surface-300);
-  --accent: var(--secondary-700);
-  --accent-foreground: var(--secondary-200);
-  --destructive: var(--error-400);
-  --destructive-foreground: var(--surface-900);
-  --border: var(--surface-700);
-  --input: var(--surface-600);
-  --ring: var(--primary-400);
+@layer utilities {
+  /* Enhanced Theme Classes */
+  .bg-theme-background {
+    @apply bg-background transition-colors duration-200;
+  }
+
+  .text-theme-foreground {
+    @apply text-foreground transition-colors duration-200;
+  }
+
+  .bg-theme-primary {
+    @apply bg-primary-500 transition-all duration-200;
+  }
+
+  .text-theme-primary {
+    @apply text-primary-500 transition-colors duration-200;
+  }
+
+  .hover\:bg-theme-primary-600:hover {
+    @apply bg-primary-600 transition-all duration-200;
+  }
+
+  .bg-theme-secondary {
+    @apply bg-secondary-500 transition-all duration-200;
+  }
+
+  .text-theme-secondary {
+    @apply text-secondary-500 transition-colors duration-200;
+  }
+
+  .hover\:bg-theme-secondary-600:hover {
+    @apply bg-secondary-600 transition-all duration-200;
+  }
+
+  .bg-theme-surface {
+    @apply bg-surface-100 transition-colors duration-200;
+  }
+
+  .text-theme-surface {
+    @apply text-surface-900 transition-colors duration-200;
+  }
+
+  /* Focus and Interactive States */
+  .focus-ring {
+    @apply focus:outline-none focus-visible:ring-2 focus-visible:ring-primary-500 focus-visible:ring-offset-2 focus-visible:ring-offset-background;
+  }
+
+  .interactive-hover {
+    @apply hover:scale-[1.02] transition-transform duration-200;
+  }
+
+  .button-hover {
+    @apply hover:-translate-y-0.5 transition-all duration-200;
+  }
+
+  /* Gradient Effects */
+  .gradient-primary {
+    @apply bg-gradient-to-br from-primary-400 to-primary-600;
+  }
+
+  .gradient-secondary {
+    @apply bg-gradient-to-br from-secondary-400 to-secondary-600;
+  }
+
+  /* Card Effects */
+  .card-hover {
+    @apply hover:shadow-lg transition-shadow duration-200;
+  }
+
+  /* Input Styles */
+  .input-focus {
+    @apply focus:ring-2 focus:ring-primary-500 focus:border-primary-500 transition-all duration-200;
+  }
 }
 
-* {
-  border-color: hsl(var(--border));
+/* Component Animations */
+@keyframes fadeIn {
+  from { opacity: 0; transform: translateY(-10px); }
+  to { opacity: 1; transform: translateY(0); }
 }
 
-body {
-  @apply bg-background text-foreground;
+@keyframes scaleIn {
+  from { transform: scale(0.95); }
+  to { transform: scale(1); }
 }
 
-/* Material Design Utility Classes */
+.animate-fade-in {
+  animation: fadeIn 0.3s ease-out;
+}
+
+.animate-scale-in {
+  animation: scaleIn 0.2s ease-out;
+}
+
+/* Component-specific styles */
 .elevation-1 {
-  box-shadow: var(--shadow-1);
+  @apply shadow-md transition-shadow duration-200;
 }
 
 .elevation-2 {
-  box-shadow: var(--shadow-2);
+  @apply shadow-lg transition-shadow duration-200;
 }
 
 .elevation-3 {
-  box-shadow: var(--shadow-3);
+  @apply shadow-xl transition-shadow duration-200;
 }
 
-/* Theme Classes */
-.bg-theme-background {
-  @apply bg-background;
-}
-
-.text-theme-foreground {
-  @apply text-foreground;
-}
-
-.bg-theme-primary {
-  background-color: hsl(var(--primary-main));
-}
-
-.bg-theme-primary-light {
-  background-color: hsl(var(--primary-light));
-}
-
-.bg-theme-primary-dark {
-  background-color: hsl(var(--primary-dark));
-}
-
-.text-theme-primary {
-  color: hsl(var(--primary-foreground));
-}
-
-.bg-theme-secondary {
-  background-color: hsl(var(--secondary-main));
-}
-
-.bg-theme-secondary-light {
-  background-color: hsl(var(--secondary-light));
-}
-
-.bg-theme-secondary-dark {
-  background-color: hsl(var(--secondary-dark));
-}
-
-.text-theme-secondary {
-  color: hsl(var(--secondary-foreground));
-}
-
-.bg-theme-surface {
-  background-color: hsl(var(--surface-100));
-}
-
-.text-theme-surface {
-  color: hsl(var(--surface-900));
-}
-
-.border-theme-border {
-  @apply border-border;
-}
-
-.bg-theme-accent {
-  @apply bg-accent;
-}
-
-.text-theme-accent {
-  @apply text-accent-foreground;
-}
-
-.bg-theme-muted {
-  @apply bg-muted;
-}
-
-.text-theme-muted {
-  @apply text-muted-foreground;
-}
-
-.ring-theme-ring {
-  @apply ring-ring;
-}
-
-.border-theme-input {
-  @apply border-input;
+/* Accessibility Enhancements */
+.sr-only {
+  @apply absolute w-px h-px p-0 -m-px overflow-hidden whitespace-nowrap border-0;
 }

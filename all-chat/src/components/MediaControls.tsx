@@ -1,7 +1,6 @@
 import React from 'react';
 import { Button } from "@/components/ui/button"
 import { Video, VideoOff, Mic, MicOff } from 'lucide-react';
-import styles from '@/styles/shared.module.css';
 
 interface MediaControlsProps {
   isVideoOn: boolean;
@@ -17,28 +16,42 @@ const MediaControls: React.FC<MediaControlsProps> = ({
   toggleAudio
 }) => {
   return (
-    <div className="flex space-x-2">
+    <div className="flex space-x-3 animate-fade-in">
       <Button
         onClick={toggleVideo}
-        variant="outline"
-        className={`elevation-1 ${styles.button} ${
+        className={`p-3 rounded-full elevation-2 button-hover focus-ring ${
           isVideoOn 
-            ? 'bg-theme-surface text-theme-foreground hover:bg-theme-surface-200' 
-            : 'bg-theme-surface-800 text-error-200 hover:bg-theme-surface-700'
-        }`}
+            ? 'bg-primary-50 text-primary-600 hover:bg-primary-100 hover:text-primary-700' 
+            : 'bg-error-500 text-white hover:bg-error-600'
+        } transition-all duration-200`}
+        aria-label={isVideoOn ? 'Turn off video' : 'Turn on video'}
       >
-        {isVideoOn ? <Video size={24} /> : <VideoOff size={24} />}
+        <div className="relative">
+          {isVideoOn ? (
+            <Video size={24} className="animate-scale-in" />
+          ) : (
+            <VideoOff size={24} className="animate-scale-in" />
+          )}
+          <span className="absolute -top-1 -right-1 w-2 h-2 rounded-full bg-current animate-pulse" />
+        </div>
       </Button>
       <Button
         onClick={toggleAudio}
-        variant="outline"
-        className={`elevation-1 ${styles.button} ${
+        className={`p-3 rounded-full elevation-2 button-hover focus-ring ${
           isAudioOn 
-            ? 'bg-theme-surface text-theme-foreground hover:bg-theme-surface-200' 
-            : 'bg-theme-surface-800 text-error-200 hover:bg-theme-surface-700'
-        }`}
+            ? 'bg-primary-50 text-primary-600 hover:bg-primary-100 hover:text-primary-700' 
+            : 'bg-error-500 text-white hover:bg-error-600'
+        } transition-all duration-200`}
+        aria-label={isAudioOn ? 'Mute microphone' : 'Unmute microphone'}
       >
-        {isAudioOn ? <Mic size={24} /> : <MicOff size={24} />}
+        <div className="relative">
+          {isAudioOn ? (
+            <Mic size={24} className="animate-scale-in" />
+          ) : (
+            <MicOff size={24} className="animate-scale-in" />
+          )}
+          <span className="absolute -top-1 -right-1 w-2 h-2 rounded-full bg-current animate-pulse" />
+        </div>
       </Button>
     </div>
   );

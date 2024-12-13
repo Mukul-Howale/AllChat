@@ -6,7 +6,8 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/com
 import { Label } from '@/components/ui/label';
 import { Avatar } from '@/components/ui/avatar';
 import { Switch } from '@/components/ui/switch';
-import { Users, MessageSquare, Bell, ThumbsUp, ThumbsDown } from 'lucide-react';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Users, MessageSquare, Bell, ThumbsUp, ThumbsDown, Download, Clock, Star } from 'lucide-react';
 import Header from '../layouts/Header';
 import Footer from '../layouts/Footer';
 import { observer } from 'mobx-react-lite';
@@ -25,11 +26,18 @@ const UserProfile = observer(() => {
   const [phoneNumber, setPhoneNumber] = useState('');
   const [friendsCount, setFriendsCount] = useState(0);
   const [messages, setMessages] = useState(0);
-  const [notifications, setNotifications] = useState(0);
+  const [notifications, setNotifications] = useState<number>(0);
   const [thumbsUp, setThumbsUp] = useState(0);
   const [thumbsDown, setThumbsDown] = useState(0);
   const [isPaidUser, setIsPaidUser] = useState(false);
   const [isEmailVerified, setIsEmailVerified] = useState(false);
+  const [likes, setLikes] = useState(0);
+  const [dislikes, setDislikes] = useState(0);
+  const [rating, setRating] = useState('4.5');
+  const [joinDate, setJoinDate] = useState('2 months');
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+  const [deleteConfirmText, setDeleteConfirmText] = useState('');
+  const [privacy, setPrivacy] = useState('public');
 
   useEffect(() => {
     setIsClient(true);
@@ -78,140 +86,269 @@ const UserProfile = observer(() => {
     router.push('/');
   };
 
+  const handleExportData = () => {
+    // Implement data export logic here
+  };
+
+  const handleDeleteAccount = () => {
+    // Implement account deletion logic here
+  };
+
   if (!isClient || !currentUser) return null;
 
   return (
-    <div className="flex flex-col min-h-screen bg-theme-background text-theme-foreground">
+    <div className="min-h-screen bg-theme-background">
       <Header />
       <main className="flex-grow flex items-center justify-center p-4">
         <div className="container mx-auto px-4 py-8">
-          <div className="max-w-2xl mx-auto">
-            <div className="bg-theme-surface rounded-xl p-6 shadow-md elevation-1">
-              <div className="flex items-center space-x-4 mb-6">
-                <Avatar className="h-20 w-20 rounded-full">
-                  <img
-                    alt="User avatar"
-                    src={`https://api.dicebear.com/6.x/initials/svg?seed=${name}`}
-                    style={{ width: '100%', height: '100%' }}
-                  />
-                </Avatar>
-                <div>
-                  <h1 className="text-2xl font-bold text-theme-foreground">{name}</h1>
-                  <p className="text-theme-foreground/60">{email}</p>
+          <div className="max-w-4xl mx-auto space-y-8 animate-fade-in">
+            {/* Profile Header */}
+            <div className="bg-theme-surface rounded-lg p-6 elevation-2 card-hover">
+              <h1 className="text-3xl font-bold text-theme-foreground mb-4">Profile Settings</h1>
+              <p className="text-muted-foreground">Manage your account settings and preferences</p>
+            </div>
+
+            {/* Stats Section */}
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+              <div className="gradient-primary rounded-lg p-6 text-white elevation-2 animate-scale-in">
+                <h3 className="text-lg font-semibold mb-2">Total Chats</h3>
+                <p className="text-3xl font-bold">{messages}</p>
+              </div>
+              <div className="gradient-secondary rounded-lg p-6 text-white elevation-2 animate-scale-in">
+                <h3 className="text-lg font-semibold mb-2">Friends Made</h3>
+                <p className="text-3xl font-bold">{friendsCount}</p>
+              </div>
+              <div className="bg-surface-700 rounded-lg p-6 text-white elevation-2 animate-scale-in">
+                <h3 className="text-lg font-semibold mb-2">Time Spent</h3>
+                <p className="text-3xl font-bold">127h</p>
+              </div>
+            </div>
+
+            {/* Settings Form */}
+            <form onSubmit={handleSaveProfile} className="space-y-6">
+              <div className="bg-theme-surface rounded-lg p-6 elevation-2">
+                <h2 className="text-2xl font-semibold text-theme-foreground mb-6">Personal Information</h2>
+                <div className="space-y-4">
+                  <div>
+                    <label htmlFor="username" className="block text-sm font-medium text-theme-foreground mb-2">
+                      Username
+                    </label>
+                    <Input
+                      type="text"
+                      id="username"
+                      name="username"
+                      value={username}
+                      onChange={(e) => setUsername(e.target.value)}
+                      className="w-full px-4 py-2 rounded-md bg-background border border-input input-focus"
+                      placeholder="Enter your username"
+                    />
+                  </div>
+                  <div>
+                    <label htmlFor="email" className="block text-sm font-medium text-theme-foreground mb-2">
+                      Email
+                    </label>
+                    <Input
+                      type="email"
+                      id="email"
+                      name="email"
+                      value={email}
+                      onChange={(e) => setEmail(e.target.value)}
+                      className="w-full px-4 py-2 rounded-md bg-background border border-input input-focus"
+                      placeholder="Enter your email"
+                    />
+                  </div>
+                  <div>
+                    <label htmlFor="name" className="block text-sm font-medium text-theme-foreground mb-2">
+                      Full Name
+                    </label>
+                    <Input
+                      type="text"
+                      id="name"
+                      name="name"
+                      value={name}
+                      onChange={(e) => setName(e.target.value)}
+                      className="w-full px-4 py-2 rounded-md bg-background border border-input input-focus"
+                      placeholder="Enter your full name"
+                    />
+                  </div>
+                  <div>
+                    <label htmlFor="phone" className="block text-sm font-medium text-theme-foreground mb-2">
+                      Phone Number
+                    </label>
+                    <Input
+                      type="text"
+                      id="phone"
+                      name="phone"
+                      value={phoneNumber}
+                      onChange={(e) => setPhoneNumber(e.target.value)}
+                      className="w-full px-4 py-2 rounded-md bg-background border border-input input-focus"
+                      placeholder="Enter your phone number"
+                    />
+                  </div>
                 </div>
               </div>
 
-              <div className="space-y-6">
-                <div>
-                  <h2 className="text-lg font-semibold text-theme-foreground mb-4">Profile Settings</h2>
-                  <form onSubmit={handleSaveProfile} className="space-y-4">
-                    <div className="space-y-2 rounded-lg">
-                      <Label htmlFor="name" className="text-theme-foreground/90">Display Name</Label>
-                      <Input
-                        id="name"
-                        value={name}
-                        onChange={(e) => setName(e.target.value)}
-                        className={styles.input}
-                      />
+              <div className="bg-theme-surface rounded-lg p-6 elevation-2">
+                <h2 className="text-2xl font-semibold text-theme-foreground mb-6">Preferences</h2>
+                <div className="space-y-4">
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <h3 className="text-lg font-medium text-theme-foreground">Dark Mode</h3>
+                      <p className="text-sm text-muted-foreground">Enable dark mode for better night viewing</p>
                     </div>
+                    <Switch
+                      checked={isPaidUser}
+                      onCheckedChange={setIsPaidUser}
+                      className="focus-ring"
+                    />
+                  </div>
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <h3 className="text-lg font-medium text-theme-foreground">Notifications</h3>
+                      <p className="text-sm text-muted-foreground">Receive notifications for new messages</p>
+                    </div>
+                    <Input
+                      type="number"
+                      value={notifications}
+                      onChange={(e) => setNotifications(Number(e.target.value))}
+                      className="w-20 px-4 py-2 rounded-md bg-background border border-input input-focus"
+                    />
+                  </div>
+                </div>
+              </div>
 
-                    <div className="space-y-2 rounded-lg">
-                      <Label htmlFor="email" className="text-theme-foreground/90">Email</Label>
-                      <Input
-                        id="email"
-                        value={email}
-                        onChange={(e) => setEmail(e.target.value)}
-                        className={styles.input}
-                      />
-                    </div>
-
-                    <div className="space-y-2 rounded-lg">
-                      <Label htmlFor="username" className="text-theme-foreground/90">Username</Label>
-                      <Input
-                        id="username"
-                        value={username}
-                        onChange={(e) => setUsername(e.target.value)}
-                        className={styles.input}
-                      />
-                    </div>
-
-                    <div className="space-y-2 rounded-lg">
-                      <Label htmlFor="phone" className="text-theme-foreground/90">Phone Number (Optional)</Label>
-                      <Input
-                        id="phone"
-                        type="tel"
-                        value={phoneNumber}
-                        onChange={(e) => setPhoneNumber(e.target.value)}
-                        placeholder="Enter your phone number"
-                        className={styles.input}
-                      />
-                    </div>
-
-                    <div className="flex items-center space-x-2 text-theme-muted">
-                      <Users size={20} />
-                      <span>{friendsCount} friends</span>
-                    </div>
-                    <div className="flex items-center space-x-2 text-theme-muted">
-                      <MessageSquare size={20} />
-                      <span>{messages} messages</span>
-                    </div>
-                    <div className="flex items-center space-x-2 text-theme-muted">
-                      <Bell size={20} />
-                      <span>{notifications} notifications</span>
-                    </div>
-                    <div className="flex items-center space-x-4 text-theme-muted">
-                      <div className="flex items-center space-x-2">
-                        <ThumbsUp size={20} />
-                        <span>{thumbsUp}</span>
-                      </div>
-                      <div className="flex items-center space-x-2">
-                        <ThumbsDown size={20} />
-                        <span>{thumbsDown}</span>
-                      </div>
-                    </div>
-
-                    <div className="pt-4 space-y-4">
-                      <Button 
-                        type="submit"
-                        className={`bg-theme-primary text-theme-surface hover:bg-theme-primary-600 transition-colors elevation-1 ${styles.button}`}
-                      >
-                        Save Changes
-                      </Button>
-                      
-                      <div className="flex">
-                        <Button 
-                          onClick={handleLogout}
-                          variant="outline"
-                          className={`text-theme-foreground hover:bg-theme-surface-100 transition-colors ${styles.button}`}
-                        >
-                          Logout
-                        </Button>
-                      </div>
-                    </div>
-                  </form>
+              {/* Account Management Section */}
+              <div className="bg-theme-surface rounded-lg p-6 elevation-2">
+                <h2 className="text-2xl font-semibold text-theme-foreground mb-6">Account Management</h2>
+                
+                {/* Account Stats */}
+                <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
+                  <div className="bg-surface-100 p-4 rounded-lg text-center elevation-1">
+                    <ThumbsUp className="mx-auto h-6 w-6 text-primary-500 mb-2" />
+                    <div className="text-xl font-semibold text-theme-foreground">{likes || 0}</div>
+                    <div className="text-sm text-muted-foreground">Likes</div>
+                  </div>
+                  <div className="bg-surface-100 p-4 rounded-lg text-center elevation-1">
+                    <ThumbsDown className="mx-auto h-6 w-6 text-error-500 mb-2" />
+                    <div className="text-xl font-semibold text-theme-foreground">{dislikes || 0}</div>
+                    <div className="text-sm text-muted-foreground">Dislikes</div>
+                  </div>
+                  <div className="bg-surface-100 p-4 rounded-lg text-center elevation-1">
+                    <Star className="mx-auto h-6 w-6 text-secondary-500 mb-2" />
+                    <div className="text-xl font-semibold text-theme-foreground">{rating || '4.5'}</div>
+                    <div className="text-sm text-muted-foreground">Rating</div>
+                  </div>
+                  <div className="bg-surface-100 p-4 rounded-lg text-center elevation-1">
+                    <Clock className="mx-auto h-6 w-6 text-primary-500 mb-2" />
+                    <div className="text-xl font-semibold text-theme-foreground">{joinDate || '2 months'}</div>
+                    <div className="text-sm text-muted-foreground">Member Since</div>
+                  </div>
                 </div>
 
-                <div>
-                  <h2 className="text-lg font-semibold text-theme-foreground mb-4">Account Settings</h2>
-                  <div className="space-y-4">
-                    <div className={`flex items-center justify-between p-4 bg-red-50 dark:bg-red-900/10 border border-red-200 dark:border-red-800 ${styles.dangerBox}`}>
-                      <div>
-                        <h3 className="font-medium text-red-700 dark:text-red-400">Delete Account</h3>
-                        <p className="text-sm text-red-600/80 dark:text-red-400/80">
-                          Permanently delete your account and all associated data
-                        </p>
-                      </div>
-                      <Button 
-                        variant="destructive"
-                        className={`bg-red-600 hover:bg-red-700 text-white transition-colors ${styles.button}`}
+                {/* Account Actions */}
+                <div className="space-y-4">
+                  {/* Export Data */}
+                  <div className="flex items-center justify-between p-4 bg-surface-100 rounded-lg">
+                    <div>
+                      <h3 className="text-lg font-medium text-theme-foreground">Export Your Data</h3>
+                      <p className="text-sm text-muted-foreground">Download a copy of your chat history and preferences</p>
+                    </div>
+                    <Button
+                      onClick={handleExportData}
+                      className="bg-secondary-500 hover:bg-secondary-600 text-white px-4 py-2 button-hover focus-ring"
+                    >
+                      <Download className="w-4 h-4 mr-2" />
+                      Export
+                    </Button>
+                  </div>
+
+                  {/* Privacy Settings */}
+                  <div className="flex items-center justify-between p-4 bg-surface-100 rounded-lg">
+                    <div>
+                      <h3 className="text-lg font-medium text-theme-foreground">Profile Visibility</h3>
+                      <p className="text-sm text-muted-foreground">Control who can see your profile information</p>
+                    </div>
+                    <div className="w-40">
+                      <Select
+                        value={privacy}
+                        onValueChange={setPrivacy}
                       >
-                        Delete Account
-                      </Button>
+                        <SelectTrigger>
+                          <SelectValue placeholder="Select visibility" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="public">Public</SelectItem>
+                          <SelectItem value="friends">Friends Only</SelectItem>
+                          <SelectItem value="private">Private</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
+                  </div>
+
+                  {/* Account Deletion */}
+                  <div className="p-4 bg-error-50 border border-error-200 rounded-lg">
+                    <div className="space-y-4">
+                      <div>
+                        <h3 className="text-lg font-medium text-error-800">Delete Account Permanently</h3>
+                        <p className="text-sm text-error-600">This action cannot be undone. Please be certain.</p>
+                      </div>
+                      
+                      {showDeleteConfirm ? (
+                        <div className="space-y-4 animate-fade-in">
+                          <Input
+                            type="text"
+                            placeholder="Type 'DELETE' to confirm"
+                            value={deleteConfirmText}
+                            onChange={(e) => setDeleteConfirmText(e.target.value)}
+                            className="w-full border-error-200 focus:border-error-500 focus:ring-error-500"
+                          />
+                          <div className="flex space-x-2">
+                            <Button
+                              onClick={() => setShowDeleteConfirm(false)}
+                              variant="outline"
+                              className="hover:bg-error-50"
+                            >
+                              Cancel
+                            </Button>
+                            <Button
+                              onClick={handleDeleteAccount}
+                              disabled={deleteConfirmText !== 'DELETE'}
+                              className="bg-error-500 hover:bg-error-600 text-white disabled:bg-error-300"
+                            >
+                              Confirm Delete
+                            </Button>
+                          </div>
+                        </div>
+                      ) : (
+                        <Button
+                          onClick={() => setShowDeleteConfirm(true)}
+                          className="bg-error-500 hover:bg-error-600 text-white"
+                        >
+                          Delete Account
+                        </Button>
+                      )}
                     </div>
                   </div>
                 </div>
               </div>
-            </div>
+
+              <div className="flex justify-end space-x-4">
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={handleLogout}
+                  className="px-6 py-2 button-hover focus-ring"
+                >
+                  Logout
+                </Button>
+                <Button
+                  type="submit"
+                  className="bg-primary-500 text-white px-6 py-2 button-hover focus-ring"
+                >
+                  Save Changes
+                </Button>
+              </div>
+            </form>
           </div>
         </div>
       </main>

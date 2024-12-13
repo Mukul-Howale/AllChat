@@ -35,18 +35,18 @@ const ChatControls: React.FC<ChatControlsProps> = ({
   };
 
   return (
-    <div className="flex justify-center items-center space-x-4">
+    <div className="flex justify-center items-center space-x-4 animate-fade-in">
       <div className="flex items-center space-x-2">
         <Button
           onClick={handleDecrease}
           disabled={isChatActive || isWaiting || groupSize === 2}
-          variant="outline"
-          className={`bg-theme-primary text-theme-primary-foreground hover:bg-theme-primary/90 ${styles.button}`}
+          className="bg-primary-500 hover:bg-primary-600 text-white disabled:bg-surface-200 disabled:text-surface-500 elevation-1 button-hover focus-ring w-10 h-10 rounded-full"
+          aria-label="Decrease group size"
         >
           -
         </Button>
-        <span className="text-xl font-semibold flex items-center">
-          <Users className="inline mr-2 text-theme-primary" />
+        <span className="text-xl font-semibold flex items-center px-4 py-2 bg-surface-100 rounded-full elevation-1 animate-scale-in">
+          <Users className="inline mr-2 text-primary-500" />
           <span className="text-theme-foreground">
             {groupSize === 'any' ? 'Any' : `${groupSize} People`}
           </span>
@@ -54,37 +54,43 @@ const ChatControls: React.FC<ChatControlsProps> = ({
         <Button
           onClick={handleIncrease}
           disabled={isChatActive || isWaiting || groupSize === 4}
-          variant="outline"
-          className={`bg-theme-primary text-theme-primary-foreground hover:bg-theme-primary/90 ${styles.button}`}
+          className="bg-primary-500 hover:bg-primary-600 text-white disabled:bg-surface-200 disabled:text-surface-500 elevation-1 button-hover focus-ring w-10 h-10 rounded-full"
+          aria-label="Increase group size"
         >
           +
         </Button>
       </div>
+
       <div className="space-x-2">
         {!isChatActive && !isWaiting && (
           <Button
             onClick={handleStartChat}
-            variant="default"
-            className={`bg-theme-primary text-theme-primary-foreground hover:bg-theme-primary/90 ${styles.button}`}
+            className="bg-secondary-500 hover:bg-secondary-600 text-white px-6 font-medium elevation-1 button-hover focus-ring"
           >
             Start Chat
+          </Button>
+        )}
+        {isWaiting && (
+          <Button
+            onClick={handleStopChat}
+            className="bg-error-500 hover:bg-error-600 text-white px-6 font-medium elevation-1 button-hover focus-ring"
+          >
+            Cancel
           </Button>
         )}
         {isChatActive && (
           <>
             <Button
               onClick={handleNextChat}
-              variant="outline"
-              className={`bg-theme-surface text-theme-foreground hover:bg-theme-surface-100 ${styles.button}`}
+              className="bg-secondary-500 hover:bg-secondary-600 text-white px-6 font-medium elevation-1 button-hover focus-ring"
             >
-              Next
+              Next Chat
             </Button>
             <Button
               onClick={handleStopChat}
-              variant="destructive"
-              className={`bg-error-500 text-white hover:bg-error-600 ${styles.button}`}
+              className="bg-error-500 hover:bg-error-600 text-white px-6 font-medium elevation-1 button-hover focus-ring"
             >
-              Stop
+              Leave Chat
             </Button>
           </>
         )}
