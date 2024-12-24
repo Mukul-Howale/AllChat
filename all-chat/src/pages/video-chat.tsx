@@ -78,7 +78,7 @@ const VideoChat: React.FC = observer(() => {
     }
 
     // Cleanup function
-    return () => {      
+    return () => {
       if (websocket.current) {
         websocket.current.close();
       }
