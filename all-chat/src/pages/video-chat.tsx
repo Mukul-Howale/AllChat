@@ -32,58 +32,56 @@ const VideoChat: React.FC = observer(() => {
       return;
     }
 
-    // Establish WebSocket connection with user authentication
-    try {
-      websocket.current = new WebSocket(`ws://localhost:8080/ws/chat?userId=${currentUser.id}`);
-
-      if (websocket.current) {
-        websocket.current.onopen = () => {
-          console.log('WebSocket connection established');
-          setError(null);
-        };
-
-        websocket.current.onmessage = (event) => {
-          try {
-            const data = JSON.parse(event.data);
-            switch (data.type) {
-              case 'chat':
-                setMessages(prevMessages => [...prevMessages, data.message]);
-                break;
-              case 'userJoined':
-                // Handle new user joining
-                break;
-              case 'userLeft':
-                // Handle user leaving
-                break;
-              default:
-                console.log('Received message:', data);
-            }
-          } catch (err) {
-            console.error('Error parsing WebSocket message:', err);
-          }
-        };
-
-        websocket.current.onclose = () => {
-          console.log('WebSocket connection closed');
-          setError('Connection closed. Please try reconnecting.');
-        };
-
-        websocket.current.onerror = () => {
-          setError('WebSocket connection error. Please try again.');
-        };
-      }
-    } catch (err) {
-      console.error('WebSocket connection error:', err);
-      setError('Failed to establish connection. Please try again.');
-    }
-
-    // Cleanup function
+    // Cleanup function to handle page leave
     return () => {
-      if (websocket.current) {
-        websocket.current.close();
-      }
+      handleStopChat();
     };
   }, [currentUser, router]);
+
+  const setupWebSocket = () => {
+    if (!currentUser) return null;
+
+    const ws = new WebSocket(`ws://localhost:8093/ws?userId=${currentUser.id}`);
+
+    ws.onopen = () => {
+      console.log('WebSocket connection established');
+      setError(null);
+    };
+
+    ws.onmessage = (event) => {
+      try {
+        const data = JSON.parse(event.data);
+        switch (data.type) {
+          case 'chat':
+            setMessages(prevMessages => [...prevMessages, data.message]);
+            break;
+          case 'userJoined':
+            // Handle new user joining
+            break;
+          case 'userLeft':
+            // Handle user leaving
+            break;
+          default:
+            console.log('Received message:', data);
+        }
+      } catch (err) {
+        console.error('Error parsing WebSocket message:', err);
+      }
+    };
+
+    ws.onclose = (event) => {
+      console.log('WebSocket connection closed');
+      if (isChatActive && !event.wasClean) {
+        setError('Connection closed unexpectedly. Please try reconnecting.');
+      }
+    };
+
+    ws.onerror = () => {
+      setError('WebSocket connection error. Please try again.');
+    };
+
+    return ws;
+  };
 
   const handleStartChat = async () => {
     if (!currentUser) {
@@ -91,10 +89,68 @@ const VideoChat: React.FC = observer(() => {
       return;
     }
 
+    // First ensure any existing connection is closed
+    if (websocket.current) {
+      websocket.current.close();
+      websocket.current = null;
+    }
+
     setIsWaiting(true);
     setError(null);
 
     try {
+      // First try to access media devices before establishing connection
+      let stream;
+      try {
+        stream = await navigator.mediaDevices.getUserMedia({ video: true, audio: true });
+      } catch (error) {
+        console.error('Error accessing media devices:', error);
+        throw new Error('Failed to access camera or microphone. Please ensure they are connected and you have granted permission.');
+      }
+
+      // Establish new WebSocket connection
+      websocket.current = setupWebSocket();
+      if (!websocket.current) {
+        throw new Error('Failed to establish WebSocket connection');
+      }
+
+      // Wait for the WebSocket connection to be established
+      await new Promise((resolve, reject) => {
+        if (!websocket.current) {
+          reject(new Error('WebSocket connection failed'));
+          return;
+        }
+
+        const ws = websocket.current;
+        const timeout = setTimeout(() => {
+          ws.removeEventListener('open', onOpen);
+          ws.removeEventListener('error', onError);
+          reject(new Error('WebSocket connection timeout'));
+        }, 5000); // 5 second timeout
+        
+        const onOpen = () => {
+          clearTimeout(timeout);
+          ws.removeEventListener('open', onOpen);
+          ws.removeEventListener('error', onError);
+          resolve(true);
+        };
+
+        const onError = (error: Event) => {
+          clearTimeout(timeout);
+          ws.removeEventListener('open', onOpen);
+          ws.removeEventListener('error', onError);
+          reject(new Error('WebSocket connection failed'));
+        };
+
+        if (ws.readyState === WebSocket.OPEN) {
+          clearTimeout(timeout);
+          resolve(true);
+        } else {
+          ws.addEventListener('open', onOpen);
+          ws.addEventListener('error', onError);
+        }
+      });
+
       const response = await fetch('/api/chat/join', {
         method: 'POST',
         headers: {
@@ -112,30 +168,58 @@ const VideoChat: React.FC = observer(() => {
         throw new Error('Failed to join chat');
       }
 
-      try {
-        const stream = await navigator.mediaDevices.getUserMedia({ video: true, audio: true });
-        if (localVideoRef.current) {
-          localVideoRef.current.srcObject = stream;
-        }
-      } catch (error) {
-        console.error('Error accessing media devices:', error);
+      // Set video stream
+      if (localVideoRef.current) {
+        localVideoRef.current.srcObject = stream;
       }
 
-      setTimeout(() => {
-        setIsWaiting(false);
-        setIsChatActive(true);
-      }, 5000);
-    } catch (error) {
-      console.error('Error starting chat:', error);
+      setIsChatActive(true);
+      setIsWaiting(false);
+    } catch (err) {
+      console.error('Error starting chat:', err);
+      setError(err instanceof Error ? err.message : 'Failed to start chat');
+      await handleStopChat();
     }
   };
 
-  const handleStopChat = () => {
+  const handleStopChat = async () => {
+    // Clear states first to update UI immediately
     setIsChatActive(false);
+    setIsWaiting(false);
     setMessages([]);
+    setError(null);
+
+    // Stop video tracks
     if (localVideoRef.current && localVideoRef.current.srcObject) {
       const tracks = (localVideoRef.current.srcObject as MediaStream).getTracks();
       tracks.forEach(track => track.stop());
+      localVideoRef.current.srcObject = null;
+    }
+
+    // Close WebSocket connection
+    if (websocket.current) {
+      const ws = websocket.current;
+      websocket.current = null; // Clear reference first to prevent reconnection attempts
+
+      // Only make the leave request if we were actually in a chat
+      if (isChatActive) {
+        try {
+          await fetch('/api/chat/leave', {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+              userId: currentUser?.id,
+            }),
+          });
+        } catch (err) {
+          console.error('Error leaving chat:', err);
+        }
+      }
+
+      // Close the connection last to ensure server receives any pending messages
+      ws.close();
     }
   };
 
