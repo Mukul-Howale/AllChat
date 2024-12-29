@@ -89,6 +89,12 @@ const VideoChat: React.FC = observer(() => {
       return;
     }
 
+    // Check if getUserMedia is supported
+    if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+      setError('Your browser does not support camera/microphone access. Please use a modern browser like Chrome, Firefox, or Edge.');
+      return;
+    }
+
     // First ensure any existing connection is closed
     if (websocket.current) {
       websocket.current.close();
@@ -102,17 +108,44 @@ const VideoChat: React.FC = observer(() => {
       // First try to access media devices before establishing connection
       let stream;
       try {
-        stream = await navigator.mediaDevices.getUserMedia({ video: true, audio: true });
+        console.log('Requesting media permissions...');
+        stream = await navigator.mediaDevices.getUserMedia({ 
+          video: {
+            width: { ideal: 1280 },
+            height: { ideal: 720 }
+          }, 
+          audio: true 
+        });
+        console.log('Media permissions granted:', stream.getTracks().map(track => ({ kind: track.kind, label: track.label })));
+        
+        // Attach the stream to the local video element
+        if (localVideoRef.current) {
+          localVideoRef.current.srcObject = stream;
+          await localVideoRef.current.play().catch(error => {
+            console.error('Error playing local video:', error);
+          });
+        }
       } catch (error: any) {
+        console.error('Media access error:', error.name, error.message);
         setIsWaiting(false);
         if (error.name === 'NotFoundError') {
           setError('No camera or microphone found. Please connect your devices and try again.');
-        } else if (error.name === 'NotAllowedError') {
-          setError('Camera/microphone access denied. Please allow access in your browser settings.');
+        } else if (error.name === 'NotAllowedError' || error.name === 'PermissionDeniedError') {
+          setError('Camera/microphone access denied. Please check your browser settings and ensure the permissions are not blocked.');
+        } else if (error.name === 'NotReadableError') {
+          setError('Could not access your camera/microphone. They might be in use by another application.');
         } else {
-          setError('Failed to access camera or microphone. Please ensure they are connected and you have granted permission.');
+          setError(`Failed to access camera or microphone: ${error.message}`);
         }
         return;
+      }
+
+      // Set initial video and audio state based on stream tracks
+      if (stream) {
+        const videoTrack = stream.getVideoTracks()[0];
+        const audioTrack = stream.getAudioTracks()[0];
+        setIsVideoOn(videoTrack?.enabled ?? false);
+        setIsAudioOn(audioTrack?.enabled ?? false);
       }
 
       // Establish new WebSocket connection
@@ -177,11 +210,6 @@ const VideoChat: React.FC = observer(() => {
         throw new Error('Failed to join chat');
       }
 
-      // Set video stream
-      if (localVideoRef.current) {
-        localVideoRef.current.srcObject = stream;
-      }
-
       setIsChatActive(true);
       setIsWaiting(false);
     } catch (err) {
@@ -191,45 +219,33 @@ const VideoChat: React.FC = observer(() => {
     }
   };
 
-  const handleStopChat = async () => {
-    // Clear states first to update UI immediately
-    setIsChatActive(false);
-    setIsWaiting(false);
-    setMessages([]);
-    setError(null);
-
-    // Stop video tracks
+  const handleStopChat = () => {
+    // Stop all tracks in the local stream
     if (localVideoRef.current && localVideoRef.current.srcObject) {
-      const tracks = (localVideoRef.current.srcObject as MediaStream).getTracks();
-      tracks.forEach(track => track.stop());
+      const stream = localVideoRef.current.srcObject as MediaStream;
+      stream.getTracks().forEach(track => track.stop());
       localVideoRef.current.srcObject = null;
     }
 
+    // Stop all tracks in remote streams
+    remoteVideos.forEach(ref => {
+      if (ref.current && ref.current.srcObject) {
+        const stream = ref.current.srcObject as MediaStream;
+        stream.getTracks().forEach(track => track.stop());
+        ref.current.srcObject = null;
+      }
+    });
+
     // Close WebSocket connection
     if (websocket.current) {
-      const ws = websocket.current;
-      websocket.current = null; // Clear reference first to prevent reconnection attempts
-
-      // Only make the leave request if we were actually in a chat
-      if (isChatActive) {
-        try {
-          await fetch('/api/chat/leave', {
-            method: 'POST',
-            headers: {
-              'Content-Type': 'application/json',
-            },
-            body: JSON.stringify({
-              userId: currentUser?.id,
-            }),
-          });
-        } catch (err) {
-          console.error('Error leaving chat:', err);
-        }
-      }
-
-      // Close the connection last to ensure server receives any pending messages
-      ws.close();
+      websocket.current.close();
+      websocket.current = null;
     }
+
+    setIsChatActive(false);
+    setIsWaiting(false);
+    setMessages([]);
+    setRemoteVideos([]);
   };
 
   const handleNextChat = () => {
