@@ -103,15 +103,24 @@ const VideoChat: React.FC = observer(() => {
       let stream;
       try {
         stream = await navigator.mediaDevices.getUserMedia({ video: true, audio: true });
-      } catch (error) {
-        console.error('Error accessing media devices:', error);
-        throw new Error('Failed to access camera or microphone. Please ensure they are connected and you have granted permission.');
+      } catch (error: any) {
+        setIsWaiting(false);
+        if (error.name === 'NotFoundError') {
+          setError('No camera or microphone found. Please connect your devices and try again.');
+        } else if (error.name === 'NotAllowedError') {
+          setError('Camera/microphone access denied. Please allow access in your browser settings.');
+        } else {
+          setError('Failed to access camera or microphone. Please ensure they are connected and you have granted permission.');
+        }
+        return;
       }
 
       // Establish new WebSocket connection
       websocket.current = setupWebSocket();
       if (!websocket.current) {
-        throw new Error('Failed to establish WebSocket connection');
+        setIsWaiting(false);
+        setError('Failed to establish connection. Please try again.');
+        return;
       }
 
       // Wait for the WebSocket connection to be established
@@ -340,8 +349,25 @@ const VideoChat: React.FC = observer(() => {
         </div>
       </div>
       {error && (
-        <div className={`absolute bottom-4 right-4 bg-error-500 text-white px-4 py-2 elevation-2 ${styles.container}`}>
-          {error}
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+          <div className={`bg-theme-surface p-6 rounded-lg shadow-lg max-w-md ${styles.container}`}>
+            <h3 className="text-error-500 font-semibold text-lg mb-2">Camera/Microphone Access Required</h3>
+            <p className="text-theme-foreground mb-4">{error}</p>
+            <div className="text-theme-foreground text-sm">
+              <p className="mb-2">Please try the following:</p>
+              <ul className="list-disc pl-5 space-y-1">
+                <li>Check if your camera and microphone are properly connected</li>
+                <li>Allow browser permissions for camera and microphone access</li>
+                <li>Close other applications that might be using your camera</li>
+              </ul>
+            </div>
+            <button 
+              onClick={() => setError(null)} 
+              className="mt-4 px-4 py-2 bg-theme-primary text-white rounded hover:bg-opacity-90"
+            >
+              Dismiss
+            </button>
+          </div>
         </div>
       )}
     </div>
