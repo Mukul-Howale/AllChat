@@ -21,8 +21,11 @@ const VideoChat: React.FC = observer(() => {
   const [isVideoOn, setIsVideoOn] = useState(true);
   const [isAudioOn, setIsAudioOn] = useState(true);
   const [error, setError] = useState<{ type: 'media' | 'connection' | 'other'; message: string } | null>(null);
+  const [hasVideo, setHasVideo] = useState(false);
+  const [hasAudio, setHasAudio] = useState(false);
 
   const localVideoRef = useRef<HTMLVideoElement>(null);
+  const mediaStreamRef = useRef<MediaStream | null>(null);
   const [remoteVideos, setRemoteVideos] = useState<React.RefObject<HTMLVideoElement>[]>([]);
   const websocket = useRef<WebSocket | null>(null);
 
@@ -173,8 +176,13 @@ const VideoChat: React.FC = observer(() => {
         }
 
         // Update UI state based on what we got
-        setIsVideoOn(stream.getVideoTracks().length > 0);
-        setIsAudioOn(stream.getAudioTracks().length > 0);
+        mediaStreamRef.current = stream;
+        const hasVideoTrack = stream.getVideoTracks().length > 0;
+        const hasAudioTrack = stream.getAudioTracks().length > 0;
+        setHasVideo(hasVideoTrack);
+        setHasAudio(hasAudioTrack);
+        setIsVideoOn(hasVideoTrack);
+        setIsAudioOn(hasAudioTrack);
 
       } catch (error: any) {
         console.error('Media access error:', error.name, error.message);
@@ -341,9 +349,9 @@ const VideoChat: React.FC = observer(() => {
   };
 
   const toggleVideo = () => {
-    if (localVideoRef.current && localVideoRef.current.srcObject) {
-      const videoTrack = (localVideoRef.current.srcObject as MediaStream)
-        .getVideoTracks()[0];
+    const stream = mediaStreamRef.current;
+    if (stream && hasVideo) {
+      const videoTrack = stream.getVideoTracks()[0];
       if (videoTrack) {
         videoTrack.enabled = !videoTrack.enabled;
         setIsVideoOn(videoTrack.enabled);
@@ -352,9 +360,9 @@ const VideoChat: React.FC = observer(() => {
   };
 
   const toggleAudio = () => {
-    if (localVideoRef.current && localVideoRef.current.srcObject) {
-      const audioTrack = (localVideoRef.current.srcObject as MediaStream)
-        .getAudioTracks()[0];
+    const stream = mediaStreamRef.current;
+    if (stream && hasAudio) {
+      const audioTrack = stream.getAudioTracks()[0];
       if (audioTrack) {
         audioTrack.enabled = !audioTrack.enabled;
         setIsAudioOn(audioTrack.enabled);
@@ -418,6 +426,8 @@ const VideoChat: React.FC = observer(() => {
               isAudioOn={isAudioOn}
               toggleVideo={toggleVideo}
               toggleAudio={toggleAudio}
+              hasVideo={hasVideo}
+              hasAudio={hasAudio}
             />
             <ChatControls
               groupSize={groupSize}
