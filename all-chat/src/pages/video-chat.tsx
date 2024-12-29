@@ -20,8 +20,8 @@ const VideoChat: React.FC = observer(() => {
   const [messages, setMessages] = useState<{ text: string; sender: string }[]>([]);
   const [isVideoOn, setIsVideoOn] = useState(true);
   const [isAudioOn, setIsAudioOn] = useState(true);
-  const [error, setError] = useState<string | null>(null);
-  
+  const [error, setError] = useState<{ type: 'media' | 'connection' | 'other'; message: string } | null>(null);
+
   const localVideoRef = useRef<HTMLVideoElement>(null);
   const [remoteVideos, setRemoteVideos] = useState<React.RefObject<HTMLVideoElement>[]>([]);
   const websocket = useRef<WebSocket | null>(null);
@@ -72,12 +72,18 @@ const VideoChat: React.FC = observer(() => {
     ws.onclose = (event) => {
       console.log('WebSocket connection closed');
       if (isChatActive && !event.wasClean) {
-        setError('Connection closed unexpectedly. Please try reconnecting.');
+        setError({
+          type: 'connection',
+          message: 'Connection closed unexpectedly. Please try reconnecting.'
+        });
       }
     };
 
     ws.onerror = () => {
-      setError('WebSocket connection error. Please try again.');
+      setError({
+        type: 'connection',
+        message: 'WebSocket connection error. Please try again.'
+      });
     };
 
     return ws;
@@ -91,7 +97,10 @@ const VideoChat: React.FC = observer(() => {
 
     // Check if getUserMedia is supported
     if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
-      setError('Your browser does not support camera/microphone access. Please use a modern browser like Chrome, Firefox, or Edge.');
+      setError({
+        type: 'media',
+        message: 'Your browser does not support camera/microphone access. Please use a modern browser like Chrome, Firefox, or Edge.'
+      });
       return;
     }
 
@@ -109,50 +118,99 @@ const VideoChat: React.FC = observer(() => {
       let stream;
       try {
         console.log('Requesting media permissions...');
-        stream = await navigator.mediaDevices.getUserMedia({ 
-          video: {
-            width: { ideal: 1280 },
-            height: { ideal: 720 }
-          }, 
-          audio: true 
-        });
+        try {
+          // First try both video and audio
+          stream = await navigator.mediaDevices.getUserMedia({ 
+            video: {
+              width: { ideal: 1280 },
+              height: { ideal: 720 }
+            }, 
+            audio: true 
+          });
+          console.log('Got both video and audio');
+        } catch (err) {
+          // If that fails, try video only
+          try {
+            stream = await navigator.mediaDevices.getUserMedia({ 
+              video: {
+                width: { ideal: 1280 },
+                height: { ideal: 720 }
+              },
+              audio: false
+            });
+            console.log('Got video only');
+            setError({
+              type: 'media',
+              message: 'No microphone found. Video chat will work but you won\'t be able to speak.'
+            });
+          } catch {
+            // If video fails, try audio only
+            try {
+              stream = await navigator.mediaDevices.getUserMedia({ 
+                video: false,
+                audio: true
+              });
+              console.log('Got audio only');
+              setError({
+                type: 'media',
+                message: 'No camera found. Voice chat will work but others won\'t be able to see you.'
+              });
+            } catch {
+              // If both individual attempts fail, throw the original error
+              throw err;
+            }
+          }
+        }
+        
         console.log('Media permissions granted:', stream.getTracks().map(track => ({ kind: track.kind, label: track.label })));
         
-        // Attach the stream to the local video element
-        if (localVideoRef.current) {
+        // Attach the stream to the local video element if we have video
+        if (localVideoRef.current && stream.getVideoTracks().length > 0) {
           localVideoRef.current.srcObject = stream;
           await localVideoRef.current.play().catch(error => {
             console.error('Error playing local video:', error);
           });
         }
+
+        // Update UI state based on what we got
+        setIsVideoOn(stream.getVideoTracks().length > 0);
+        setIsAudioOn(stream.getAudioTracks().length > 0);
+
       } catch (error: any) {
         console.error('Media access error:', error.name, error.message);
         setIsWaiting(false);
         if (error.name === 'NotFoundError') {
-          setError('No camera or microphone found. Please connect your devices and try again.');
+          setError({
+            type: 'media',
+            message: 'No camera or microphone found. Please connect at least one device and try again.'
+          });
         } else if (error.name === 'NotAllowedError' || error.name === 'PermissionDeniedError') {
-          setError('Camera/microphone access denied. Please check your browser settings and ensure the permissions are not blocked.');
+          setError({
+            type: 'media',
+            message: 'Camera/microphone access denied. Please check your browser settings and ensure the permissions are not blocked.'
+          });
         } else if (error.name === 'NotReadableError') {
-          setError('Could not access your camera/microphone. They might be in use by another application.');
+          setError({
+            type: 'media',
+            message: 'Could not access your camera/microphone. They might be in use by another application.'
+          });
         } else {
-          setError(`Failed to access camera or microphone: ${error.message}`);
+          setError({
+            type: 'media',
+            message: `Failed to access camera or microphone: ${error.message}`
+          });
         }
         return;
-      }
-
-      // Set initial video and audio state based on stream tracks
-      if (stream) {
-        const videoTrack = stream.getVideoTracks()[0];
-        const audioTrack = stream.getAudioTracks()[0];
-        setIsVideoOn(videoTrack?.enabled ?? false);
-        setIsAudioOn(audioTrack?.enabled ?? false);
       }
 
       // Establish new WebSocket connection
       websocket.current = setupWebSocket();
       if (!websocket.current) {
         setIsWaiting(false);
-        setError('Failed to establish connection. Please try again.');
+        setError({
+          type: 'connection',
+          message: 'Failed to establish connection. Please try again.'
+        });
         return;
       }
 
@@ -214,7 +272,27 @@ const VideoChat: React.FC = observer(() => {
       setIsWaiting(false);
     } catch (err) {
       console.error('Error starting chat:', err);
-      setError(err instanceof Error ? err.message : 'Failed to start chat');
+      setIsWaiting(false);
+      
+      if (err instanceof Error) {
+        if (err.message.includes('WebSocket')) {
+          setError({
+            type: 'connection',
+            message: 'Failed to establish connection. Please check your internet connection and try again.'
+          });
+        } else {
+          setError({
+            type: 'connection',
+            message: err.message
+          });
+        }
+      } else {
+        setError({
+          type: 'other',
+          message: 'Failed to start chat. Please try again.'
+        });
+      }
+      
       await handleStopChat();
     }
   };
@@ -367,16 +445,33 @@ const VideoChat: React.FC = observer(() => {
       {error && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
           <div className={`bg-theme-surface p-6 rounded-lg shadow-lg max-w-md ${styles.container}`}>
-            <h3 className="text-error-500 font-semibold text-lg mb-2">Camera/Microphone Access Required</h3>
-            <p className="text-theme-foreground mb-4">{error}</p>
-            <div className="text-theme-foreground text-sm">
-              <p className="mb-2">Please try the following:</p>
-              <ul className="list-disc pl-5 space-y-1">
-                <li>Check if your camera and microphone are properly connected</li>
-                <li>Allow browser permissions for camera and microphone access</li>
-                <li>Close other applications that might be using your camera</li>
-              </ul>
-            </div>
+            {error.type === 'media' ? (
+              <>
+                <h3 className="text-error-500 font-semibold text-lg mb-2">Camera/Microphone Access Required</h3>
+                <p className="text-theme-foreground mb-4">{error.message}</p>
+                <div className="text-theme-foreground text-sm">
+                  <p className="mb-2">Please try the following:</p>
+                  <ul className="list-disc pl-5 space-y-1">
+                    <li>Check if your camera and microphone are properly connected</li>
+                    <li>Allow browser permissions for camera and microphone access</li>
+                    <li>Close other applications that might be using your camera</li>
+                  </ul>
+                </div>
+              </>
+            ) : (
+              <>
+                <h3 className="text-error-500 font-semibold text-lg mb-2">Connection Error</h3>
+                <p className="text-theme-foreground mb-4">{error.message}</p>
+                <div className="text-theme-foreground text-sm">
+                  <p className="mb-2">Please try the following:</p>
+                  <ul className="list-disc pl-5 space-y-1">
+                    <li>Check your internet connection</li>
+                    <li>Make sure the chat server is running</li>
+                    <li>Try refreshing the page</li>
+                  </ul>
+                </div>
+              </>
+            )}
             <button 
               onClick={() => setError(null)} 
               className="mt-4 px-4 py-2 bg-theme-primary text-white rounded hover:bg-opacity-90"
