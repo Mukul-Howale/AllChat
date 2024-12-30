@@ -38,6 +38,57 @@ const VideoChat: React.FC = observer(() => {
     ]
   };
 
+  const getAvailableMediaStream = async () => {
+    const constraints = {
+      video: isVideoOn,
+      audio: isAudioOn
+    };
+
+    try {
+      // First try with current constraints
+      return await navigator.mediaDevices.getUserMedia(constraints);
+    } catch (err) {
+      console.log('Failed with initial constraints, trying fallbacks...');
+      
+      // If both failed, try video only
+      if (isVideoOn && isAudioOn) {
+        try {
+          console.log('Trying video only...');
+          const videoStream = await navigator.mediaDevices.getUserMedia({ video: true, audio: false });
+          setIsAudioOn(false);
+          setHasAudio(false);
+          setError({
+            type: 'media',
+            message: 'Microphone not available. Video-only mode enabled.'
+          });
+          return videoStream;
+        } catch (videoErr) {
+          console.log('Video-only failed, trying audio only...');
+        }
+      }
+
+      // If video-only failed or if only audio was requested, try audio only
+      if (isAudioOn) {
+        try {
+          console.log('Trying audio only...');
+          const audioStream = await navigator.mediaDevices.getUserMedia({ video: false, audio: true });
+          setIsVideoOn(false);
+          setHasVideo(false);
+          setError({
+            type: 'media',
+            message: 'Camera not available. Audio-only mode enabled.'
+          });
+          return audioStream;
+        } catch (audioErr) {
+          console.log('Audio-only failed');
+        }
+      }
+
+      // If all attempts failed
+      throw new Error('No media devices available. Please connect a camera or microphone.');
+    }
+  };
+
   const createPeerConnection = (remoteUserId: string) => {
     try {
       const peerConnection = new RTCPeerConnection(configuration);
@@ -66,13 +117,16 @@ const VideoChat: React.FC = observer(() => {
         });
       };
 
-      // Add local tracks to the peer connection
+      // Add local tracks to the peer connection if available
       if (mediaStreamRef.current) {
-        mediaStreamRef.current.getTracks().forEach(track => {
-          if (mediaStreamRef.current) {
-            peerConnection.addTrack(track, mediaStreamRef.current);
-          }
-        });
+        const tracks = mediaStreamRef.current.getTracks();
+        if (tracks.length > 0) {
+          tracks.forEach(track => {
+            if (mediaStreamRef.current) {
+              peerConnection.addTrack(track, mediaStreamRef.current);
+            }
+          });
+        }
       }
 
       setPeerConnections(prev => ({
@@ -163,95 +217,6 @@ const VideoChat: React.FC = observer(() => {
     }
   };
 
-  useEffect(() => {
-    if (!currentUser) {
-      router.push('/auth');
-      return;
-    }
-
-    // Setup WebSocket connection when the page loads
-    websocket.current = setupWebSocket();
-
-    // Cleanup function to handle page leave
-    return () => {
-      if (websocket.current) {
-        websocket.current.close();
-        websocket.current = null;
-      }
-      // Clean up WebRTC if active
-      if (isChatActive) {
-        handleStopChat();
-      }
-    };
-  }, [currentUser, router]);
-
-  const setupWebSocket = () => {
-    if (!currentUser) return null;
-
-    const ws = new WebSocket(`ws://localhost:8093/ws?userId=${currentUser.id}`);
-
-    ws.onopen = () => {
-      console.log('WebSocket connection established');
-      setError(null);
-    };
-
-    ws.onmessage = (event) => {
-      try {
-        const data = JSON.parse(event.data);
-        switch (data.type) {
-          case 'chat':
-            setMessages(prevMessages => [...prevMessages, data.message]);
-            break;
-          case 'userJoined':
-            // Handle new user joining
-            if (isChatActive && data.userId !== currentUser.id) {
-              initiateCall(data.userId);
-            }
-            break;
-          case 'userLeft':
-            // Handle user leaving
-            if (peerConnections[data.userId]) {
-              peerConnections[data.userId].close();
-              setPeerConnections(prev => {
-                const newConnections = { ...prev };
-                delete newConnections[data.userId];
-                return newConnections;
-              });
-            }
-            break;
-          case 'offer':
-          case 'answer':
-          case 'ice-candidate':
-            handleWebRTCSignaling(data);
-            break;
-          default:
-            console.log('Received message:', data);
-        }
-      } catch (err) {
-        console.error('Error parsing WebSocket message:', err);
-      }
-    };
-
-    ws.onclose = (event) => {
-      console.log('WebSocket connection closed');
-      if (isChatActive && !event.wasClean) {
-        setError({
-          type: 'connection',
-          message: 'Connection closed unexpectedly. Please try reconnecting.'
-        });
-      }
-    };
-
-    ws.onerror = () => {
-      setError({
-        type: 'connection',
-        message: 'WebSocket connection error. Please try again.'
-      });
-    };
-
-    return ws;
-  };
-
   const handleStartChat = async () => {
     if (!currentUser) {
       router.push('/auth');
@@ -269,28 +234,39 @@ const VideoChat: React.FC = observer(() => {
         return;
       }
 
-      // Only handle WebRTC connection setup
-      if (!mediaStreamRef.current) {
-        const stream = await navigator.mediaDevices.getUserMedia({
-          video: true,
-          audio: true
-        });
-        mediaStreamRef.current = stream;
-        if (localVideoRef.current) {
-          localVideoRef.current.srcObject = stream;
-        }
+      // Get media stream with fallbacks
+      const stream = await getAvailableMediaStream();
+      
+      // Update UI based on what we got
+      const hasVideoTrack = stream.getVideoTracks().length > 0;
+      const hasAudioTrack = stream.getAudioTracks().length > 0;
+      setHasVideo(hasVideoTrack);
+      setHasAudio(hasAudioTrack);
+      setIsVideoOn(hasVideoTrack);
+      setIsAudioOn(hasAudioTrack);
+
+      // Attach stream to video element if we have video
+      if (localVideoRef.current && hasVideoTrack) {
+        localVideoRef.current.srcObject = stream;
       }
 
+      mediaStreamRef.current = stream;
       setIsChatActive(true);
       setIsWaiting(false);
-      setError(null);
+
+      // Clear any previous error if we successfully got at least one type of media
+      if (hasVideoTrack || hasAudioTrack) {
+        setError(null);
+      }
+
     } catch (err: any) {
       console.error('Error starting chat:', err);
       setError({
         type: 'media',
-        message: err.message || 'Failed to access media devices'
+        message: err.message || 'Failed to access media devices. Please check your camera and microphone permissions.'
       });
       setIsWaiting(false);
+      setIsChatActive(false);
     }
   };
 
@@ -378,6 +354,95 @@ const VideoChat: React.FC = observer(() => {
         </div>
       );
     }
+  };
+
+  useEffect(() => {
+    if (!currentUser) {
+      router.push('/auth');
+      return;
+    }
+
+    // Setup WebSocket connection when the page loads
+    websocket.current = setupWebSocket();
+
+    // Cleanup function to handle page leave
+    return () => {
+      if (websocket.current) {
+        websocket.current.close();
+        websocket.current = null;
+      }
+      // Clean up WebRTC if active
+      if (isChatActive) {
+        handleStopChat();
+      }
+    };
+  }, [currentUser, router]);
+
+  const setupWebSocket = () => {
+    if (!currentUser) return null;
+
+    const ws = new WebSocket(`ws://localhost:8093/ws?userId=${currentUser.id}`);
+
+    ws.onopen = () => {
+      console.log('WebSocket connection established');
+      setError(null);
+    };
+
+    ws.onmessage = (event) => {
+      try {
+        const data = JSON.parse(event.data);
+        switch (data.type) {
+          case 'chat':
+            setMessages(prevMessages => [...prevMessages, data.message]);
+            break;
+          case 'userJoined':
+            // Handle new user joining
+            if (isChatActive && data.userId !== currentUser.id) {
+              initiateCall(data.userId);
+            }
+            break;
+          case 'userLeft':
+            // Handle user leaving
+            if (peerConnections[data.userId]) {
+              peerConnections[data.userId].close();
+              setPeerConnections(prev => {
+                const newConnections = { ...prev };
+                delete newConnections[data.userId];
+                return newConnections;
+              });
+            }
+            break;
+          case 'offer':
+          case 'answer':
+          case 'ice-candidate':
+            handleWebRTCSignaling(data);
+            break;
+          default:
+            console.log('Received message:', data);
+        }
+      } catch (err) {
+        console.error('Error parsing WebSocket message:', err);
+      }
+    };
+
+    ws.onclose = (event) => {
+      console.log('WebSocket connection closed');
+      if (isChatActive && !event.wasClean) {
+        setError({
+          type: 'connection',
+          message: 'Connection closed unexpectedly. Please try reconnecting.'
+        });
+      }
+    };
+
+    ws.onerror = () => {
+      setError({
+        type: 'connection',
+        message: 'WebSocket connection error. Please try again.'
+      });
+    };
+
+    return ws;
   };
 
   return (
