@@ -10,6 +10,12 @@ import Header from '../layouts/Header';
 import { useRouter } from 'next/router';
 import styles from '@/styles/shared.module.css';
 
+// Logging utility
+const logEvent = (event: string, data?: any) => {
+  const timestamp = new Date().toISOString();
+  console.log(`[VideoChat][${timestamp}] ${event}`, data ? data : '');
+};
+
 const VideoChat: React.FC = observer(() => {
   const router = useRouter();
   const store = useStore();
@@ -39,62 +45,73 @@ const VideoChat: React.FC = observer(() => {
   };
 
   const getAvailableMediaStream = async () => {
+    logEvent('Attempting to get media stream', { video: isVideoOn, audio: isAudioOn });
     const constraints = {
       video: isVideoOn,
       audio: isAudioOn
     };
 
     try {
-      // First try with current constraints
+      logEvent('Requesting media stream with constraints', constraints);
       return await navigator.mediaDevices.getUserMedia(constraints);
     } catch (err) {
-      console.log('Failed with initial constraints, trying fallbacks...');
+      // Safely handle unknown error types by checking if it's an Error instance
+      const errorMessage = err instanceof Error ? err.message : 'Unknown error occurred';
+      logEvent('Failed with initial constraints, trying fallbacks', { error: errorMessage });
       
-      // If both failed, try video only
+      // If both video and audio failed, try video-only as fallback
       if (isVideoOn && isAudioOn) {
         try {
-          console.log('Trying video only...');
+          logEvent('Attempting video-only stream');
           const videoStream = await navigator.mediaDevices.getUserMedia({ video: true, audio: false });
           setIsAudioOn(false);
           setHasAudio(false);
+          logEvent('Successfully obtained video-only stream');
           setError({
             type: 'media',
             message: 'Microphone not available. Video-only mode enabled.'
           });
           return videoStream;
         } catch (videoErr) {
-          console.log('Video-only failed, trying audio only...');
+          // Handle video-only stream errors safely
+          const errorMessage = videoErr instanceof Error ? videoErr.message : 'Unknown error occurred';
+          logEvent('Video-only stream failed', { error: errorMessage });
         }
       }
 
-      // If video-only failed or if only audio was requested, try audio only
       if (isAudioOn) {
         try {
-          console.log('Trying audio only...');
+          logEvent('Attempting audio-only stream');
           const audioStream = await navigator.mediaDevices.getUserMedia({ video: false, audio: true });
           setIsVideoOn(false);
           setHasVideo(false);
+          logEvent('Successfully obtained audio-only stream');
           setError({
             type: 'media',
             message: 'Camera not available. Audio-only mode enabled.'
           });
           return audioStream;
         } catch (audioErr) {
-          console.log('Audio-only failed');
+          // Handle audio-only stream errors safely
+          const errorMessage = audioErr instanceof Error ? audioErr.message : 'Unknown error occurred';
+          logEvent('Audio-only stream failed', { error: errorMessage });
         }
       }
 
-      // If all attempts failed
+      logEvent('All media stream attempts failed');
       throw new Error('No media devices available. Please connect a camera or microphone.');
     }
   };
 
   const createPeerConnection = (remoteUserId: string) => {
+    logEvent('Creating peer connection', { remoteUserId });
     try {
+      // Initialize RTCPeerConnection with ICE servers for WebRTC
       const peerConnection = new RTCPeerConnection(configuration);
 
       peerConnection.onicecandidate = (event) => {
         if (event.candidate && websocket.current) {
+          logEvent('ICE candidate generated', { remoteUserId });
           websocket.current.send(JSON.stringify({
             type: 'ice-candidate',
             candidate: event.candidate,
@@ -105,28 +122,44 @@ const VideoChat: React.FC = observer(() => {
       };
 
       peerConnection.ontrack = (event) => {
+        logEvent('Remote track received', { remoteUserId, trackType: event.track.kind });
         const [remoteStream] = event.streams;
         const newVideoRef = React.createRef<HTMLVideoElement>();
         setRemoteVideos(prev => [...prev, newVideoRef]);
         
-        // Schedule a micro-task to ensure the ref is available
         queueMicrotask(() => {
           if (newVideoRef.current) {
             newVideoRef.current.srcObject = remoteStream;
+            logEvent('Remote stream attached to video element', { remoteUserId });
           }
         });
       };
 
-      // Add local tracks to the peer connection if available
+      peerConnection.onconnectionstatechange = () => {
+        logEvent('Peer connection state changed', { 
+          remoteUserId, 
+          state: peerConnection.connectionState 
+        });
+      };
+
+      peerConnection.oniceconnectionstatechange = () => {
+        logEvent('ICE connection state changed', {
+          remoteUserId,
+          state: peerConnection.iceConnectionState
+        });
+      };
+
       if (mediaStreamRef.current) {
         const tracks = mediaStreamRef.current.getTracks();
-        if (tracks.length > 0) {
-          tracks.forEach(track => {
-            if (mediaStreamRef.current) {
-              peerConnection.addTrack(track, mediaStreamRef.current);
-            }
-          });
-        }
+        logEvent('Adding local tracks to peer connection', { 
+          remoteUserId, 
+          trackCount: tracks.length 
+        });
+        tracks.forEach(track => {
+          if (mediaStreamRef.current) {
+            peerConnection.addTrack(track, mediaStreamRef.current);
+          }
+        });
       }
 
       setPeerConnections(prev => ({
@@ -136,7 +169,12 @@ const VideoChat: React.FC = observer(() => {
 
       return peerConnection;
     } catch (err) {
-      console.error('Error creating peer connection:', err);
+      // Handle peer connection creation errors safely
+      const errorMessage = err instanceof Error ? err.message : 'Unknown error occurred';
+      logEvent('Error creating peer connection', { 
+        remoteUserId, 
+        error: errorMessage 
+      });
       setError({
         type: 'connection',
         message: 'Failed to create peer connection'
@@ -147,23 +185,32 @@ const VideoChat: React.FC = observer(() => {
 
   const handleWebRTCSignaling = async (data: any) => {
     const { type, from, to, sdp, candidate } = data;
+    logEvent('Received WebRTC signal', { type, from, to });
 
     if (to !== currentUser?.id) return;
 
     let pc = peerConnections[from];
     if (!pc) {
-      pc = createPeerConnection(from);
-      if (!pc) return;
+      logEvent('Creating new peer connection for signaling', { remoteUserId: from });
+      const newPc = createPeerConnection(from);
+      if (!newPc) {
+        logEvent('Failed to create peer connection for signaling', { remoteUserId: from });
+        return;
+      }
+      pc = newPc;
     }
 
     try {
+      // Process different types of WebRTC signaling messages
       switch (type) {
         case 'offer':
+          logEvent('Processing offer', { from });
           await pc.setRemoteDescription(new RTCSessionDescription(sdp));
           const answer = await pc.createAnswer();
           await pc.setLocalDescription(answer);
           
           if (websocket.current) {
+            logEvent('Sending answer', { to: from });
             websocket.current.send(JSON.stringify({
               type: 'answer',
               sdp: answer,
@@ -174,17 +221,25 @@ const VideoChat: React.FC = observer(() => {
           break;
 
         case 'answer':
+          logEvent('Processing answer', { from });
           await pc.setRemoteDescription(new RTCSessionDescription(sdp));
           break;
 
         case 'ice-candidate':
           if (candidate) {
+            logEvent('Adding ICE candidate', { from });
             await pc.addIceCandidate(new RTCIceCandidate(candidate));
           }
           break;
       }
     } catch (err) {
-      console.error('Error handling WebRTC signaling:', err);
+      // Handle WebRTC signaling errors safely
+      const errorMessage = err instanceof Error ? err.message : 'Unknown error occurred';
+      logEvent('Error handling WebRTC signaling', { 
+        type, 
+        from, 
+        error: errorMessage 
+      });
       setError({
         type: 'connection',
         message: 'WebRTC signaling failed'
@@ -193,14 +248,17 @@ const VideoChat: React.FC = observer(() => {
   };
 
   const initiateCall = async (remoteUserId: string) => {
+    logEvent('Initiating call', { remoteUserId });
     const pc = createPeerConnection(remoteUserId);
     if (!pc) return;
 
     try {
+      // Create and send WebRTC offer to remote peer
       const offer = await pc.createOffer();
       await pc.setLocalDescription(offer);
 
       if (websocket.current) {
+        logEvent('Sending offer', { to: remoteUserId });
         websocket.current.send(JSON.stringify({
           type: 'offer',
           sdp: offer,
@@ -209,7 +267,12 @@ const VideoChat: React.FC = observer(() => {
         }));
       }
     } catch (err) {
-      console.error('Error creating offer:', err);
+      // Handle offer creation errors safely
+      const errorMessage = err instanceof Error ? err.message : 'Unknown error occurred';
+      logEvent('Error creating offer', { 
+        remoteUserId, 
+        error: errorMessage
+      });
       setError({
         type: 'connection',
         message: 'Failed to initiate call'
@@ -218,14 +281,16 @@ const VideoChat: React.FC = observer(() => {
   };
 
   const handleStartChat = async () => {
+    logEvent('Starting chat');
     if (!currentUser) {
+      logEvent('No current user, redirecting to auth');
       router.push('/auth');
       return;
     }
 
     try {
       setIsWaiting(true);
-      // Check if getUserMedia is supported
+      logEvent('Checking if getUserMedia is supported');
       if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
         setError({
           type: 'media',
@@ -234,10 +299,10 @@ const VideoChat: React.FC = observer(() => {
         return;
       }
 
-      // Get media stream with fallbacks
+      logEvent('Getting media stream with fallbacks');
       const stream = await getAvailableMediaStream();
       
-      // Update UI based on what we got
+      logEvent('Updating UI based on media stream');
       const hasVideoTrack = stream.getVideoTracks().length > 0;
       const hasAudioTrack = stream.getAudioTracks().length > 0;
       setHasVideo(hasVideoTrack);
@@ -245,7 +310,7 @@ const VideoChat: React.FC = observer(() => {
       setIsVideoOn(hasVideoTrack);
       setIsAudioOn(hasAudioTrack);
 
-      // Attach stream to video element if we have video
+      logEvent('Attaching stream to video element if we have video');
       if (localVideoRef.current && hasVideoTrack) {
         localVideoRef.current.srcObject = stream;
       }
@@ -254,13 +319,13 @@ const VideoChat: React.FC = observer(() => {
       setIsChatActive(true);
       setIsWaiting(false);
 
-      // Clear any previous error if we successfully got at least one type of media
+      logEvent('Clearing any previous error if we successfully got at least one type of media');
       if (hasVideoTrack || hasAudioTrack) {
         setError(null);
       }
 
     } catch (err: any) {
-      console.error('Error starting chat:', err);
+      logEvent('Error starting chat', { error: err.message });
       setError({
         type: 'media',
         message: err.message || 'Failed to access media devices. Please check your camera and microphone permissions.'
@@ -271,6 +336,7 @@ const VideoChat: React.FC = observer(() => {
   };
 
   const handleStopChat = () => {
+    logEvent('Stopping chat');
     // Stop WebRTC connections
     Object.values(peerConnections).forEach(pc => pc.close());
     setPeerConnections({});
@@ -289,10 +355,12 @@ const VideoChat: React.FC = observer(() => {
   };
 
   const handleNextChat = () => {
+    logEvent('Moving to next chat');
     // Implement logic for moving to next chat
   };
 
   const handleSendMessage = (message: string) => {
+    logEvent('Sending message', { message });
     const newMessage = { text: message, sender: 'You' };
     setMessages([...messages, newMessage]);
     
@@ -303,6 +371,7 @@ const VideoChat: React.FC = observer(() => {
   };
 
   const toggleVideo = () => {
+    logEvent('Toggling video');
     const stream = mediaStreamRef.current;
     if (stream && hasVideo) {
       const videoTrack = stream.getVideoTracks()[0];
@@ -314,6 +383,7 @@ const VideoChat: React.FC = observer(() => {
   };
 
   const toggleAudio = () => {
+    logEvent('Toggling audio');
     const stream = mediaStreamRef.current;
     if (stream && hasAudio) {
       const audioTrack = stream.getAudioTracks()[0];
@@ -358,25 +428,24 @@ const VideoChat: React.FC = observer(() => {
 
   useEffect(() => {
     if (!currentUser) {
+      logEvent('No current user, redirecting to auth');
       router.push('/auth');
       return;
     }
 
-    // Setup WebSocket connection when the page loads
+    logEvent('Setting up WebSocket connection');
     websocket.current = setupWebSocket();
 
-    // Cleanup function to handle page leave
     return () => {
+      logEvent('Cleaning up video chat component');
       if (websocket.current) {
         websocket.current.close();
-        websocket.current = null;
       }
-      // Clean up WebRTC if active
-      if (isChatActive) {
-        handleStopChat();
+      if (mediaStreamRef.current) {
+        mediaStreamRef.current.getTracks().forEach(track => track.stop());
       }
     };
-  }, [currentUser, router]);
+  }, [currentUser]);
 
   const setupWebSocket = () => {
     if (!currentUser) return null;
@@ -384,30 +453,34 @@ const VideoChat: React.FC = observer(() => {
     const ws = new WebSocket(`ws://localhost:8093/ws?userId=${currentUser.id}`);
 
     ws.onopen = () => {
-      console.log('WebSocket connection established');
+      logEvent('WebSocket connection established');
       setError(null);
     };
 
     ws.onmessage = (event) => {
       try {
-        const data = JSON.parse(event.data);
-        switch (data.type) {
+        // Parse and handle incoming WebSocket messages
+        const message = JSON.parse(event.data);
+        switch (message.type) {
           case 'chat':
-            setMessages(prevMessages => [...prevMessages, data.message]);
+            logEvent('Received chat message', { message: message.message });
+            setMessages(prevMessages => [...prevMessages, message.message]);
             break;
           case 'userJoined':
+            logEvent('User joined', { userId: message.userId });
             // Handle new user joining
-            if (isChatActive && data.userId !== currentUser.id) {
-              initiateCall(data.userId);
+            if (isChatActive && message.userId !== currentUser.id) {
+              initiateCall(message.userId);
             }
             break;
           case 'userLeft':
+            logEvent('User left', { userId: message.userId });
             // Handle user leaving
-            if (peerConnections[data.userId]) {
-              peerConnections[data.userId].close();
+            if (peerConnections[message.userId]) {
+              peerConnections[message.userId].close();
               setPeerConnections(prev => {
                 const newConnections = { ...prev };
-                delete newConnections[data.userId];
+                delete newConnections[message.userId];
                 return newConnections;
               });
             }
@@ -415,18 +488,20 @@ const VideoChat: React.FC = observer(() => {
           case 'offer':
           case 'answer':
           case 'ice-candidate':
-            handleWebRTCSignaling(data);
+            handleWebRTCSignaling(message);
             break;
           default:
-            console.log('Received message:', data);
+            logEvent('Received message', { data: message });
         }
       } catch (err) {
-        console.error('Error parsing WebSocket message:', err);
+        // Handle WebSocket message parsing errors safely
+        const errorMessage = err instanceof Error ? err.message : 'Unknown error occurred';
+        logEvent('Error parsing WebSocket message', { error: errorMessage });
       }
     };
 
     ws.onclose = (event) => {
-      console.log('WebSocket connection closed');
+      logEvent('WebSocket connection closed');
       if (isChatActive && !event.wasClean) {
         setError({
           type: 'connection',
@@ -436,6 +511,7 @@ const VideoChat: React.FC = observer(() => {
     };
 
     ws.onerror = () => {
+      logEvent('WebSocket connection error');
       setError({
         type: 'connection',
         message: 'WebSocket connection error. Please try again.'
