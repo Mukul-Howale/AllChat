@@ -28,6 +28,140 @@ const VideoChat: React.FC = observer(() => {
   const mediaStreamRef = useRef<MediaStream | null>(null);
   const [remoteVideos, setRemoteVideos] = useState<React.RefObject<HTMLVideoElement>[]>([]);
   const websocket = useRef<WebSocket | null>(null);
+  const [peerConnections, setPeerConnections] = useState<{ [key: string]: RTCPeerConnection }>({});
+
+  // WebRTC configuration
+  const configuration: RTCConfiguration = {
+    iceServers: [
+      { urls: 'stun:stun.l.google.com:19302' },
+      { urls: 'stun:stun1.l.google.com:19302' },
+    ]
+  };
+
+  const createPeerConnection = (remoteUserId: string) => {
+    try {
+      const peerConnection = new RTCPeerConnection(configuration);
+
+      peerConnection.onicecandidate = (event) => {
+        if (event.candidate && websocket.current) {
+          websocket.current.send(JSON.stringify({
+            type: 'ice-candidate',
+            candidate: event.candidate,
+            to: remoteUserId,
+            from: currentUser?.id
+          }));
+        }
+      };
+
+      peerConnection.ontrack = (event) => {
+        const [remoteStream] = event.streams;
+        const newVideoRef = React.createRef<HTMLVideoElement>();
+        setRemoteVideos(prev => [...prev, newVideoRef]);
+        
+        // Schedule a micro-task to ensure the ref is available
+        queueMicrotask(() => {
+          if (newVideoRef.current) {
+            newVideoRef.current.srcObject = remoteStream;
+          }
+        });
+      };
+
+      // Add local tracks to the peer connection
+      if (mediaStreamRef.current) {
+        mediaStreamRef.current.getTracks().forEach(track => {
+          if (mediaStreamRef.current) {
+            peerConnection.addTrack(track, mediaStreamRef.current);
+          }
+        });
+      }
+
+      setPeerConnections(prev => ({
+        ...prev,
+        [remoteUserId]: peerConnection
+      }));
+
+      return peerConnection;
+    } catch (err) {
+      console.error('Error creating peer connection:', err);
+      setError({
+        type: 'connection',
+        message: 'Failed to create peer connection'
+      });
+      return null;
+    }
+  };
+
+  const handleWebRTCSignaling = async (data: any) => {
+    const { type, from, to, sdp, candidate } = data;
+
+    if (to !== currentUser?.id) return;
+
+    let pc = peerConnections[from];
+    if (!pc) {
+      pc = createPeerConnection(from);
+      if (!pc) return;
+    }
+
+    try {
+      switch (type) {
+        case 'offer':
+          await pc.setRemoteDescription(new RTCSessionDescription(sdp));
+          const answer = await pc.createAnswer();
+          await pc.setLocalDescription(answer);
+          
+          if (websocket.current) {
+            websocket.current.send(JSON.stringify({
+              type: 'answer',
+              sdp: answer,
+              to: from,
+              from: currentUser?.id
+            }));
+          }
+          break;
+
+        case 'answer':
+          await pc.setRemoteDescription(new RTCSessionDescription(sdp));
+          break;
+
+        case 'ice-candidate':
+          if (candidate) {
+            await pc.addIceCandidate(new RTCIceCandidate(candidate));
+          }
+          break;
+      }
+    } catch (err) {
+      console.error('Error handling WebRTC signaling:', err);
+      setError({
+        type: 'connection',
+        message: 'WebRTC signaling failed'
+      });
+    }
+  };
+
+  const initiateCall = async (remoteUserId: string) => {
+    const pc = createPeerConnection(remoteUserId);
+    if (!pc) return;
+
+    try {
+      const offer = await pc.createOffer();
+      await pc.setLocalDescription(offer);
+
+      if (websocket.current) {
+        websocket.current.send(JSON.stringify({
+          type: 'offer',
+          sdp: offer,
+          to: remoteUserId,
+          from: currentUser?.id
+        }));
+      }
+    } catch (err) {
+      console.error('Error creating offer:', err);
+      setError({
+        type: 'connection',
+        message: 'Failed to initiate call'
+      });
+    }
+  };
 
   useEffect(() => {
     if (!currentUser) {
@@ -35,9 +169,19 @@ const VideoChat: React.FC = observer(() => {
       return;
     }
 
+    // Setup WebSocket connection when the page loads
+    websocket.current = setupWebSocket();
+
     // Cleanup function to handle page leave
     return () => {
-      handleStopChat();
+      if (websocket.current) {
+        websocket.current.close();
+        websocket.current = null;
+      }
+      // Clean up WebRTC if active
+      if (isChatActive) {
+        handleStopChat();
+      }
     };
   }, [currentUser, router]);
 
@@ -60,9 +204,25 @@ const VideoChat: React.FC = observer(() => {
             break;
           case 'userJoined':
             // Handle new user joining
+            if (isChatActive && data.userId !== currentUser.id) {
+              initiateCall(data.userId);
+            }
             break;
           case 'userLeft':
             // Handle user leaving
+            if (peerConnections[data.userId]) {
+              peerConnections[data.userId].close();
+              setPeerConnections(prev => {
+                const newConnections = { ...prev };
+                delete newConnections[data.userId];
+                return newConnections;
+              });
+            }
+            break;
+          case 'offer':
+          case 'answer':
+          case 'ice-candidate':
+            handleWebRTCSignaling(data);
             break;
           default:
             console.log('Received message:', data);
@@ -98,239 +258,57 @@ const VideoChat: React.FC = observer(() => {
       return;
     }
 
-    // Check if getUserMedia is supported
-    if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
-      setError({
-        type: 'media',
-        message: 'Your browser does not support camera/microphone access. Please use a modern browser like Chrome, Firefox, or Edge.'
-      });
-      return;
-    }
-
-    // First ensure any existing connection is closed
-    if (websocket.current) {
-      websocket.current.close();
-      websocket.current = null;
-    }
-
-    setIsWaiting(true);
-    setError(null);
-
     try {
-      // First try to access media devices before establishing connection
-      let stream;
-      try {
-        console.log('Requesting media permissions...');
-        try {
-          // First try both video and audio
-          stream = await navigator.mediaDevices.getUserMedia({ 
-            video: {
-              width: { ideal: 1280 },
-              height: { ideal: 720 }
-            }, 
-            audio: true 
-          });
-          console.log('Got both video and audio');
-        } catch (err) {
-          // If that fails, try video only
-          try {
-            stream = await navigator.mediaDevices.getUserMedia({ 
-              video: {
-                width: { ideal: 1280 },
-                height: { ideal: 720 }
-              },
-              audio: false
-            });
-            console.log('Got video only');
-            setError({
-              type: 'media',
-              message: 'No microphone found. Video chat will work but you won\'t be able to speak.'
-            });
-          } catch {
-            // If video fails, try audio only
-            try {
-              stream = await navigator.mediaDevices.getUserMedia({ 
-                video: false,
-                audio: true
-              });
-              console.log('Got audio only');
-              setError({
-                type: 'media',
-                message: 'No camera found. Voice chat will work but others won\'t be able to see you.'
-              });
-            } catch {
-              // If both individual attempts fail, throw the original error
-              throw err;
-            }
-          }
-        }
-        
-        console.log('Media permissions granted:', stream.getTracks().map(track => ({ kind: track.kind, label: track.label })));
-        
-        // Attach the stream to the local video element if we have video
-        if (localVideoRef.current && stream.getVideoTracks().length > 0) {
-          localVideoRef.current.srcObject = stream;
-          await localVideoRef.current.play().catch(error => {
-            console.error('Error playing local video:', error);
-          });
-        }
-
-        // Update UI state based on what we got
-        mediaStreamRef.current = stream;
-        const hasVideoTrack = stream.getVideoTracks().length > 0;
-        const hasAudioTrack = stream.getAudioTracks().length > 0;
-        setHasVideo(hasVideoTrack);
-        setHasAudio(hasAudioTrack);
-        setIsVideoOn(hasVideoTrack);
-        setIsAudioOn(hasAudioTrack);
-
-      } catch (error: any) {
-        console.error('Media access error:', error.name, error.message);
-        setIsWaiting(false);
-        if (error.name === 'NotFoundError') {
-          setError({
-            type: 'media',
-            message: 'No camera or microphone found. Please connect at least one device and try again.'
-          });
-        } else if (error.name === 'NotAllowedError' || error.name === 'PermissionDeniedError') {
-          setError({
-            type: 'media',
-            message: 'Camera/microphone access denied. Please check your browser settings and ensure the permissions are not blocked.'
-          });
-        } else if (error.name === 'NotReadableError') {
-          setError({
-            type: 'media',
-            message: 'Could not access your camera/microphone. They might be in use by another application.'
-          });
-        } else {
-          setError({
-            type: 'media',
-            message: `Failed to access camera or microphone: ${error.message}`
-          });
-        }
-        return;
-      }
-
-      // Establish new WebSocket connection
-      websocket.current = setupWebSocket();
-      if (!websocket.current) {
-        setIsWaiting(false);
+      setIsWaiting(true);
+      // Check if getUserMedia is supported
+      if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
         setError({
-          type: 'connection',
-          message: 'Failed to establish connection. Please try again.'
+          type: 'media',
+          message: 'Your browser does not support camera/microphone access. Please use a modern browser like Chrome, Firefox, or Edge.'
         });
         return;
       }
 
-      // Wait for the WebSocket connection to be established
-      await new Promise((resolve, reject) => {
-        if (!websocket.current) {
-          reject(new Error('WebSocket connection failed'));
-          return;
+      // Only handle WebRTC connection setup
+      if (!mediaStreamRef.current) {
+        const stream = await navigator.mediaDevices.getUserMedia({
+          video: true,
+          audio: true
+        });
+        mediaStreamRef.current = stream;
+        if (localVideoRef.current) {
+          localVideoRef.current.srcObject = stream;
         }
-
-        const ws = websocket.current;
-        const timeout = setTimeout(() => {
-          ws.removeEventListener('open', onOpen);
-          ws.removeEventListener('error', onError);
-          reject(new Error('WebSocket connection timeout'));
-        }, 5000); // 5 second timeout
-        
-        const onOpen = () => {
-          clearTimeout(timeout);
-          ws.removeEventListener('open', onOpen);
-          ws.removeEventListener('error', onError);
-          resolve(true);
-        };
-
-        const onError = (error: Event) => {
-          clearTimeout(timeout);
-          ws.removeEventListener('open', onOpen);
-          ws.removeEventListener('error', onError);
-          reject(new Error('WebSocket connection failed'));
-        };
-
-        if (ws.readyState === WebSocket.OPEN) {
-          clearTimeout(timeout);
-          resolve(true);
-        } else {
-          ws.addEventListener('open', onOpen);
-          ws.addEventListener('error', onError);
-        }
-      });
-
-      const response = await fetch('/api/chat/join', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${currentUser.id}`
-        },
-        body: JSON.stringify({ 
-          groupSize,
-          userId: currentUser.id,
-          username: currentUser.username
-        }),
-      });
-
-      if (!response.ok) {
-        throw new Error('Failed to join chat');
       }
 
       setIsChatActive(true);
       setIsWaiting(false);
-    } catch (err) {
+      setError(null);
+    } catch (err: any) {
       console.error('Error starting chat:', err);
+      setError({
+        type: 'media',
+        message: err.message || 'Failed to access media devices'
+      });
       setIsWaiting(false);
-      
-      if (err instanceof Error) {
-        if (err.message.includes('WebSocket')) {
-          setError({
-            type: 'connection',
-            message: 'Failed to establish connection. Please check your internet connection and try again.'
-          });
-        } else {
-          setError({
-            type: 'connection',
-            message: err.message
-          });
-        }
-      } else {
-        setError({
-          type: 'other',
-          message: 'Failed to start chat. Please try again.'
-        });
-      }
-      
-      await handleStopChat();
     }
   };
 
   const handleStopChat = () => {
-    // Stop all tracks in the local stream
-    if (localVideoRef.current && localVideoRef.current.srcObject) {
-      const stream = localVideoRef.current.srcObject as MediaStream;
-      stream.getTracks().forEach(track => track.stop());
+    // Stop WebRTC connections
+    Object.values(peerConnections).forEach(pc => pc.close());
+    setPeerConnections({});
+
+    // Stop media streams
+    if (mediaStreamRef.current) {
+      mediaStreamRef.current.getTracks().forEach(track => track.stop());
+      mediaStreamRef.current = null;
+    }
+    if (localVideoRef.current) {
       localVideoRef.current.srcObject = null;
     }
-
-    // Stop all tracks in remote streams
-    remoteVideos.forEach(ref => {
-      if (ref.current && ref.current.srcObject) {
-        const stream = ref.current.srcObject as MediaStream;
-        stream.getTracks().forEach(track => track.stop());
-        ref.current.srcObject = null;
-      }
-    });
-
-    // Close WebSocket connection
-    if (websocket.current) {
-      websocket.current.close();
-      websocket.current = null;
-    }
-
     setIsChatActive(false);
     setIsWaiting(false);
-    setMessages([]);
     setRemoteVideos([]);
   };
 
