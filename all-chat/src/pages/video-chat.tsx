@@ -288,6 +288,22 @@ const VideoChat: React.FC = observer(() => {
       return;
     }
 
+    // Check for WebSocket connection error before proceeding
+    if (error?.type === 'connection') {
+      logEvent('Cannot start chat due to WebSocket connection error');
+      return;
+    }
+
+    // Ensure WebSocket is connected
+    if (!websocket.current || websocket.current.readyState !== WebSocket.OPEN) {
+      logEvent('Cannot start chat - WebSocket not connected');
+      setError({
+        type: 'connection',
+        message: 'Not connected to chat server. Please wait or refresh the page.'
+      });
+      return;
+    }
+
     try {
       setIsWaiting(true);
       logEvent('Checking if getUserMedia is supported');
