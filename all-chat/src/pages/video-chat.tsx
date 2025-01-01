@@ -10,16 +10,13 @@ import Header from '../layouts/Header';
 import { useRouter } from 'next/router';
 import styles from '@/styles/shared.module.css';
 import { useWebRTC } from '@/modules/webrtc/WebRTCManager';
+import { useChat } from '@/modules/chat/ChatManager';
 import { logEvent } from '@/utils/logging';
 
 const VideoChat: React.FC = observer(() => {
   const router = useRouter();
   const store = useStore();
   const { currentUser } = store.userStore;
-  const [groupSize, setGroupSize] = useState<number | 'any'>(2);
-  const [isChatActive, setIsChatActive] = useState(false);
-  const [isWaiting, setIsWaiting] = useState(false);
-  const [messages, setMessages] = useState<{ text: string; sender: string }[]>([]);
   const [isVideoOn, setIsVideoOn] = useState(true);
   const [isAudioOn, setIsAudioOn] = useState(true);
   const [error, setError] = useState<{ type: 'media' | 'connection' | 'other'; message: string } | null>(null);
@@ -99,8 +96,7 @@ const VideoChat: React.FC = observer(() => {
     }
   };
 
-  const handleStartChat = async () => {
-    logEvent('Starting chat');
+  const handleChatStart = async () => {
     if (!currentUser) {
       logEvent('No current user, redirecting to auth');
       router.push('/auth');
@@ -124,7 +120,6 @@ const VideoChat: React.FC = observer(() => {
     }
 
     try {
-      setIsWaiting(true);
       logEvent('Checking if getUserMedia is supported');
       if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
         setError({
@@ -151,28 +146,22 @@ const VideoChat: React.FC = observer(() => {
       }
 
       setMediaStream(stream);
-      setIsChatActive(true);
-      setIsWaiting(false);
 
       logEvent('Clearing any previous error if we successfully got at least one type of media');
       if (hasVideoTrack || hasAudioTrack) {
         setError(null);
       }
-
     } catch (err: any) {
       logEvent('Error starting chat', { error: err.message });
       setError({
         type: 'media',
         message: err.message || 'Failed to access media devices. Please check your camera and microphone permissions.'
       });
-      setIsWaiting(false);
-      setIsChatActive(false);
+      throw err;
     }
   };
 
-  const handleStopChat = () => {
-    logEvent('Stopping chat');
-    // Stop WebRTC connections
+  const handleChatStop = () => {
     cleanupWebRTC();
 
     // Stop media streams
@@ -183,23 +172,33 @@ const VideoChat: React.FC = observer(() => {
     if (localVideoRef.current) {
       localVideoRef.current.srcObject = null;
     }
-    setIsChatActive(false);
-    setIsWaiting(false);
   };
 
-  const handleNextChat = () => {
-    logEvent('Moving to next chat');
-    // Implement logic for moving to next chat
-  };
+  const {
+    chatState: {
+      messages,
+      isChatActive,
+      isWaiting,
+      groupSize
+    },
+    startChat,
+    stopChat,
+    nextChat,
+    setGroupSize,
+    addMessage
+  } = useChat(handleChatStart, handleChatStop);
 
-  const handleSendMessage = (message: string) => {
-    logEvent('Sending message', { message });
-    const newMessage = { text: message, sender: 'You' };
-    setMessages([...messages, newMessage]);
+  const handleSendMessage = (text: string) => {
+    if (!currentUser) return;
     
-    // Send message through WebSocket
     if (websocket.current && websocket.current.readyState === WebSocket.OPEN) {
-      websocket.current.send(JSON.stringify(newMessage));
+      const message = {
+        type: 'chat',
+        text,
+        from: currentUser.id
+      };
+      websocket.current.send(JSON.stringify(message));
+      addMessage({ text, sender: currentUser.id });
     }
   };
 
@@ -283,7 +282,7 @@ const VideoChat: React.FC = observer(() => {
         switch (message.type) {
           case 'chat':
             logEvent('Received chat message', { message: message.message });
-            setMessages(prevMessages => [...prevMessages, message.message]);
+            store.chatStore.addMessage(message.message);
             break;
           case 'userJoined':
             logEvent('User joined', { userId: message.userId });
@@ -319,7 +318,7 @@ const VideoChat: React.FC = observer(() => {
           type: 'connection',
           message: 'Connection closed unexpectedly. Please try reconnecting.'
         });
-        handleStopChat(); // Stop the chat if connection is lost
+        handleChatStop(); // Stop the chat if connection is lost
       }
     };
 
@@ -331,7 +330,7 @@ const VideoChat: React.FC = observer(() => {
         message: 'WebSocket connection error. Please try again.'
       });
       if (isChatActive) {
-        handleStopChat(); // Stop the chat if connection errors out
+        handleChatStop(); // Stop the chat if connection errors out
       }
     };
 
@@ -378,9 +377,9 @@ const VideoChat: React.FC = observer(() => {
               setGroupSize={setGroupSize}
               isChatActive={isChatActive}
               isWaiting={isWaiting}
-              handleStartChat={handleStartChat}
-              handleStopChat={handleStopChat}
-              handleNextChat={handleNextChat}
+              handleStartChat={startChat}
+              handleStopChat={stopChat}
+              handleNextChat={nextChat}
             />
             <div className="w-1/4"></div>
           </div>
