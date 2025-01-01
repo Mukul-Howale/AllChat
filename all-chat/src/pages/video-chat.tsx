@@ -10,18 +10,18 @@ import Header from '../layouts/Header';
 import { useRouter } from 'next/router';
 import styles from '@/styles/shared.module.css';
 import { useWebRTC } from '@/modules/webrtc/WebRTCManager';
-import { useChat } from '@/modules/chat/ChatManager';
+import { useMediaStream } from '@/modules/media/MediaManager';
 import { logEvent } from '@/utils/logging';
 
 const VideoChat: React.FC = observer(() => {
   const router = useRouter();
   const store = useStore();
   const { currentUser } = store.userStore;
-  const [isVideoOn, setIsVideoOn] = useState(true);
-  const [isAudioOn, setIsAudioOn] = useState(true);
+  const [groupSize, setGroupSize] = useState<number | 'any'>(2);
+  const [isChatActive, setIsChatActive] = useState(false);
+  const [isWaiting, setIsWaiting] = useState(false);
+  const [messages, setMessages] = useState<{ content: string; sender: string; id: string; timestamp: Date }[]>([]);
   const [error, setError] = useState<{ type: 'media' | 'connection' | 'other'; message: string } | null>(null);
-  const [hasVideo, setHasVideo] = useState(false);
-  const [hasAudio, setHasAudio] = useState(false);
   const [wsConnected, setWsConnected] = useState(false);
 
   const localVideoRef = useRef<HTMLVideoElement>(null);
@@ -37,66 +37,23 @@ const VideoChat: React.FC = observer(() => {
     cleanup: cleanupWebRTC
   } = useWebRTC(currentUser?.id);
 
-  const getAvailableMediaStream = async () => {
-    logEvent('Attempting to get media stream', { video: isVideoOn, audio: isAudioOn });
-    const constraints = {
-      video: isVideoOn,
-      audio: isAudioOn
-    };
+  const {
+    mediaState: {
+      isVideoOn,
+      isAudioOn,
+      hasVideo,
+      hasAudio
+    },
+    getAvailableMediaStream,
+    toggleVideo,
+    toggleAudio,
+    stopMediaStream
+  } = useMediaStream({
+    onError: setError
+  });
 
-    try {
-      logEvent('Requesting media stream with constraints', constraints);
-      return await navigator.mediaDevices.getUserMedia(constraints);
-    } catch (err) {
-      // Safely handle unknown error types by checking if it's an Error instance
-      const errorMessage = err instanceof Error ? err.message : 'Unknown error occurred';
-      logEvent('Failed with initial constraints, trying fallbacks', { error: errorMessage });
-      
-      // If both video and audio failed, try video-only as fallback
-      if (isVideoOn && isAudioOn) {
-        try {
-          logEvent('Attempting video-only stream');
-          const videoStream = await navigator.mediaDevices.getUserMedia({ video: true, audio: false });
-          setIsAudioOn(false);
-          setHasAudio(false);
-          logEvent('Successfully obtained video-only stream');
-          setError({
-            type: 'media',
-            message: 'Microphone not available. Video-only mode enabled.'
-          });
-          return videoStream;
-        } catch (videoErr) {
-          // Handle video-only stream errors safely
-          const errorMessage = videoErr instanceof Error ? videoErr.message : 'Unknown error occurred';
-          logEvent('Video-only stream failed', { error: errorMessage });
-        }
-      }
-
-      if (isAudioOn) {
-        try {
-          logEvent('Attempting audio-only stream');
-          const audioStream = await navigator.mediaDevices.getUserMedia({ video: false, audio: true });
-          setIsVideoOn(false);
-          setHasVideo(false);
-          logEvent('Successfully obtained audio-only stream');
-          setError({
-            type: 'media',
-            message: 'Camera not available. Audio-only mode enabled.'
-          });
-          return audioStream;
-        } catch (audioErr) {
-          // Handle audio-only stream errors safely
-          const errorMessage = audioErr instanceof Error ? audioErr.message : 'Unknown error occurred';
-          logEvent('Audio-only stream failed', { error: errorMessage });
-        }
-      }
-
-      logEvent('All media stream attempts failed');
-      throw new Error('No media devices available. Please connect a camera or microphone.');
-    }
-  };
-
-  const handleChatStart = async () => {
+  const handleStartChat = async () => {
+    logEvent('Starting chat');
     if (!currentUser) {
       logEvent('No current user, redirecting to auth');
       router.push('/auth');
@@ -120,6 +77,7 @@ const VideoChat: React.FC = observer(() => {
     }
 
     try {
+      setIsWaiting(true);
       logEvent('Checking if getUserMedia is supported');
       if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
         setError({
@@ -129,27 +87,23 @@ const VideoChat: React.FC = observer(() => {
         return;
       }
 
-      logEvent('Getting media stream with fallbacks');
       const stream = await getAvailableMediaStream();
+      mediaStreamRef.current = stream;
       
-      logEvent('Updating UI based on media stream');
-      const hasVideoTrack = stream.getVideoTracks().length > 0;
-      const hasAudioTrack = stream.getAudioTracks().length > 0;
-      setHasVideo(hasVideoTrack);
-      setHasAudio(hasAudioTrack);
-      setIsVideoOn(hasVideoTrack);
-      setIsAudioOn(hasAudioTrack);
-
-      logEvent('Attaching stream to video element if we have video');
-      if (localVideoRef.current && hasVideoTrack) {
+      if (localVideoRef.current) {
         localVideoRef.current.srcObject = stream;
       }
 
       setMediaStream(stream);
+      setIsChatActive(true);
+      setIsWaiting(false);
 
-      logEvent('Clearing any previous error if we successfully got at least one type of media');
-      if (hasVideoTrack || hasAudioTrack) {
-        setError(null);
+      // Send ready signal to server
+      if (websocket.current) {
+        websocket.current.send(JSON.stringify({
+          type: 'ready',
+          groupSize
+        }));
       }
     } catch (err: any) {
       logEvent('Error starting chat', { error: err.message });
@@ -157,72 +111,72 @@ const VideoChat: React.FC = observer(() => {
         type: 'media',
         message: err.message || 'Failed to access media devices. Please check your camera and microphone permissions.'
       });
-      throw err;
+      setIsWaiting(false);
+      setIsChatActive(false);
     }
   };
 
-  const handleChatStop = () => {
+  const handleStopChat = () => {
+    logEvent('Stopping chat');
     cleanupWebRTC();
 
     // Stop media streams
     if (mediaStreamRef.current) {
-      mediaStreamRef.current.getTracks().forEach(track => track.stop());
+      // Stop all tracks before clearing the stream
+      mediaStreamRef.current.getTracks().forEach(track => {
+        track.stop();
+        logEvent('Media track stopped', { kind: track.kind });
+      });
       mediaStreamRef.current = null;
     }
+
+    // Clear video element source
     if (localVideoRef.current) {
       localVideoRef.current.srcObject = null;
     }
+
+    // Reset media state
+    stopMediaStream();
+    setIsChatActive(false);
+    setIsWaiting(false);
   };
 
-  const {
-    chatState: {
-      messages,
-      isChatActive,
-      isWaiting,
-      groupSize
-    },
-    startChat,
-    stopChat,
-    nextChat,
-    setGroupSize,
-    addMessage
-  } = useChat(handleChatStart, handleChatStop);
+  const handleNextChat = async () => {
+    handleStopChat();
+    // Add a small delay to ensure cleanup is complete
+    await new Promise(resolve => setTimeout(resolve, 500));
+    handleStartChat();
+  };
 
-  const handleSendMessage = (text: string) => {
-    if (!currentUser) return;
-    
+  const handleToggleVideo = () => {
+    if (mediaStreamRef.current) {
+      toggleVideo(mediaStreamRef.current);
+    }
+  };
+
+  const handleToggleAudio = () => {
+    if (mediaStreamRef.current) {
+      toggleAudio(mediaStreamRef.current);
+    }
+  };
+
+  const handleSendMessage = (message: string) => {
     if (websocket.current && websocket.current.readyState === WebSocket.OPEN) {
-      const message = {
+      websocket.current.send(JSON.stringify({
         type: 'chat',
-        text,
-        from: currentUser.id
-      };
-      websocket.current.send(JSON.stringify(message));
-      addMessage({ text, sender: currentUser.id });
-    }
-  };
-
-  const toggleVideo = () => {
-    logEvent('Toggling video');
-    const stream = mediaStreamRef.current;
-    if (stream && hasVideo) {
-      const videoTrack = stream.getVideoTracks()[0];
-      if (videoTrack) {
-        videoTrack.enabled = !videoTrack.enabled;
-        setIsVideoOn(videoTrack.enabled);
-      }
-    }
-  };
-
-  const toggleAudio = () => {
-    logEvent('Toggling audio');
-    const stream = mediaStreamRef.current;
-    if (stream && hasAudio) {
-      const audioTrack = stream.getAudioTracks()[0];
-      if (audioTrack) {
-        audioTrack.enabled = !audioTrack.enabled;
-        setIsAudioOn(audioTrack.enabled);
-      }
+        message: {
+          content: message,
+          sender: currentUser?.name || 'You',
+          id: crypto.randomUUID(),
+          timestamp: new Date()
+        }
+      }));
+      store.chatStore.addMessage({
+        content: message,
+        sender: 'You',
+        id: crypto.randomUUID(),
+        timestamp: new Date()
+      });
     }
   };
 
@@ -318,7 +272,7 @@ const VideoChat: React.FC = observer(() => {
           type: 'connection',
           message: 'Connection closed unexpectedly. Please try reconnecting.'
         });
-        handleChatStop(); // Stop the chat if connection is lost
+        handleStopChat(); // Stop the chat if connection is lost
       }
     };
 
@@ -330,7 +284,7 @@ const VideoChat: React.FC = observer(() => {
         message: 'WebSocket connection error. Please try again.'
       });
       if (isChatActive) {
-        handleChatStop(); // Stop the chat if connection errors out
+        handleStopChat(); // Stop the chat if connection errors out
       }
     };
 
@@ -367,8 +321,8 @@ const VideoChat: React.FC = observer(() => {
             <MediaControls
               isVideoOn={isVideoOn}
               isAudioOn={isAudioOn}
-              toggleVideo={toggleVideo}
-              toggleAudio={toggleAudio}
+              toggleVideo={handleToggleVideo}
+              toggleAudio={handleToggleAudio}
               hasVideo={hasVideo}
               hasAudio={hasAudio}
             />
@@ -377,9 +331,9 @@ const VideoChat: React.FC = observer(() => {
               setGroupSize={setGroupSize}
               isChatActive={isChatActive}
               isWaiting={isWaiting}
-              handleStartChat={startChat}
-              handleStopChat={stopChat}
-              handleNextChat={nextChat}
+              handleStartChat={handleStartChat}
+              handleStopChat={handleStopChat}
+              handleNextChat={handleNextChat}
             />
             <div className="w-1/4"></div>
           </div>
@@ -389,7 +343,7 @@ const VideoChat: React.FC = observer(() => {
             <TextChat
               isChatActive={isChatActive}
               onSendMessage={handleSendMessage}
-              messages={messages}
+              messages={messages.map(msg => ({ text: msg.content, sender: msg.sender }))}
               className="bg-theme-surface text-theme-foreground"
             />
           </div>
