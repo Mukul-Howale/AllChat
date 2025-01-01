@@ -9,12 +9,8 @@ import MediaControls from '../components/MediaControls';
 import Header from '../layouts/Header';
 import { useRouter } from 'next/router';
 import styles from '@/styles/shared.module.css';
-
-// Logging utility
-const logEvent = (event: string, data?: any) => {
-  const timestamp = new Date().toISOString();
-  console.log(`[VideoChat][${timestamp}] ${event}`, data ? data : '');
-};
+import { useWebRTC } from '@/modules/webrtc/WebRTCManager';
+import { logEvent } from '@/utils/logging';
 
 const VideoChat: React.FC = observer(() => {
   const router = useRouter();
@@ -29,20 +25,20 @@ const VideoChat: React.FC = observer(() => {
   const [error, setError] = useState<{ type: 'media' | 'connection' | 'other'; message: string } | null>(null);
   const [hasVideo, setHasVideo] = useState(false);
   const [hasAudio, setHasAudio] = useState(false);
+  const [wsConnected, setWsConnected] = useState(false);
 
   const localVideoRef = useRef<HTMLVideoElement>(null);
   const mediaStreamRef = useRef<MediaStream | null>(null);
-  const [remoteVideos, setRemoteVideos] = useState<React.RefObject<HTMLVideoElement>[]>([]);
   const websocket = useRef<WebSocket | null>(null);
-  const [peerConnections, setPeerConnections] = useState<{ [key: string]: RTCPeerConnection }>({});
 
-  // WebRTC configuration
-  const configuration: RTCConfiguration = {
-    iceServers: [
-      { urls: 'stun:stun.l.google.com:19302' },
-      { urls: 'stun:stun1.l.google.com:19302' },
-    ]
-  };
+  const {
+    remoteVideos,
+    handleWebRTCSignaling,
+    initiateCall,
+    setMediaStream,
+    setWebSocket,
+    cleanup: cleanupWebRTC
+  } = useWebRTC(currentUser?.id);
 
   const getAvailableMediaStream = async () => {
     logEvent('Attempting to get media stream', { video: isVideoOn, audio: isAudioOn });
@@ -103,183 +99,6 @@ const VideoChat: React.FC = observer(() => {
     }
   };
 
-  const createPeerConnection = (remoteUserId: string) => {
-    logEvent('Creating peer connection', { remoteUserId });
-    try {
-      // Initialize RTCPeerConnection with ICE servers for WebRTC
-      const peerConnection = new RTCPeerConnection(configuration);
-
-      peerConnection.onicecandidate = (event) => {
-        if (event.candidate && websocket.current) {
-          logEvent('ICE candidate generated', { remoteUserId });
-          websocket.current.send(JSON.stringify({
-            type: 'ice-candidate',
-            candidate: event.candidate,
-            to: remoteUserId,
-            from: currentUser?.id
-          }));
-        }
-      };
-
-      peerConnection.ontrack = (event) => {
-        logEvent('Remote track received', { remoteUserId, trackType: event.track.kind });
-        const [remoteStream] = event.streams;
-        const newVideoRef = React.createRef<HTMLVideoElement>();
-        setRemoteVideos(prev => [...prev, newVideoRef]);
-        
-        queueMicrotask(() => {
-          if (newVideoRef.current) {
-            newVideoRef.current.srcObject = remoteStream;
-            logEvent('Remote stream attached to video element', { remoteUserId });
-          }
-        });
-      };
-
-      peerConnection.onconnectionstatechange = () => {
-        logEvent('Peer connection state changed', { 
-          remoteUserId, 
-          state: peerConnection.connectionState 
-        });
-      };
-
-      peerConnection.oniceconnectionstatechange = () => {
-        logEvent('ICE connection state changed', {
-          remoteUserId,
-          state: peerConnection.iceConnectionState
-        });
-      };
-
-      if (mediaStreamRef.current) {
-        const tracks = mediaStreamRef.current.getTracks();
-        logEvent('Adding local tracks to peer connection', { 
-          remoteUserId, 
-          trackCount: tracks.length 
-        });
-        tracks.forEach(track => {
-          if (mediaStreamRef.current) {
-            peerConnection.addTrack(track, mediaStreamRef.current);
-          }
-        });
-      }
-
-      setPeerConnections(prev => ({
-        ...prev,
-        [remoteUserId]: peerConnection
-      }));
-
-      return peerConnection;
-    } catch (err) {
-      // Handle peer connection creation errors safely
-      const errorMessage = err instanceof Error ? err.message : 'Unknown error occurred';
-      logEvent('Error creating peer connection', { 
-        remoteUserId, 
-        error: errorMessage 
-      });
-      setError({
-        type: 'connection',
-        message: 'Failed to create peer connection'
-      });
-      return null;
-    }
-  };
-
-  const handleWebRTCSignaling = async (data: any) => {
-    const { type, from, to, sdp, candidate } = data;
-    logEvent('Received WebRTC signal', { type, from, to });
-
-    if (to !== currentUser?.id) return;
-
-    let pc = peerConnections[from];
-    if (!pc) {
-      logEvent('Creating new peer connection for signaling', { remoteUserId: from });
-      const newPc = createPeerConnection(from);
-      if (!newPc) {
-        logEvent('Failed to create peer connection for signaling', { remoteUserId: from });
-        return;
-      }
-      pc = newPc;
-    }
-
-    try {
-      // Process different types of WebRTC signaling messages
-      switch (type) {
-        case 'offer':
-          logEvent('Processing offer', { from });
-          await pc.setRemoteDescription(new RTCSessionDescription(sdp));
-          const answer = await pc.createAnswer();
-          await pc.setLocalDescription(answer);
-          
-          if (websocket.current) {
-            logEvent('Sending answer', { to: from });
-            websocket.current.send(JSON.stringify({
-              type: 'answer',
-              sdp: answer,
-              to: from,
-              from: currentUser?.id
-            }));
-          }
-          break;
-
-        case 'answer':
-          logEvent('Processing answer', { from });
-          await pc.setRemoteDescription(new RTCSessionDescription(sdp));
-          break;
-
-        case 'ice-candidate':
-          if (candidate) {
-            logEvent('Adding ICE candidate', { from });
-            await pc.addIceCandidate(new RTCIceCandidate(candidate));
-          }
-          break;
-      }
-    } catch (err) {
-      // Handle WebRTC signaling errors safely
-      const errorMessage = err instanceof Error ? err.message : 'Unknown error occurred';
-      logEvent('Error handling WebRTC signaling', { 
-        type, 
-        from, 
-        error: errorMessage 
-      });
-      setError({
-        type: 'connection',
-        message: 'WebRTC signaling failed'
-      });
-    }
-  };
-
-  const initiateCall = async (remoteUserId: string) => {
-    logEvent('Initiating call', { remoteUserId });
-    const pc = createPeerConnection(remoteUserId);
-    if (!pc) return;
-
-    try {
-      // Create and send WebRTC offer to remote peer
-      const offer = await pc.createOffer();
-      await pc.setLocalDescription(offer);
-
-      if (websocket.current) {
-        logEvent('Sending offer', { to: remoteUserId });
-        websocket.current.send(JSON.stringify({
-          type: 'offer',
-          sdp: offer,
-          to: remoteUserId,
-          from: currentUser?.id
-        }));
-      }
-    } catch (err) {
-      // Handle offer creation errors safely
-      const errorMessage = err instanceof Error ? err.message : 'Unknown error occurred';
-      logEvent('Error creating offer', { 
-        remoteUserId, 
-        error: errorMessage
-      });
-      setError({
-        type: 'connection',
-        message: 'Failed to initiate call'
-      });
-    }
-  };
-
   const handleStartChat = async () => {
     logEvent('Starting chat');
     if (!currentUser) {
@@ -288,19 +107,19 @@ const VideoChat: React.FC = observer(() => {
       return;
     }
 
-    // Check for WebSocket connection error before proceeding
-    if (error?.type === 'connection') {
-      logEvent('Cannot start chat due to WebSocket connection error');
-      return;
-    }
-
-    // Ensure WebSocket is connected
-    if (!websocket.current || websocket.current.readyState !== WebSocket.OPEN) {
+    // Check for WebSocket connection
+    if (!wsConnected) {
       logEvent('Cannot start chat - WebSocket not connected');
       setError({
         type: 'connection',
         message: 'Not connected to chat server. Please wait or refresh the page.'
       });
+      return;
+    }
+
+    // Check for WebSocket connection error
+    if (error?.type === 'connection') {
+      logEvent('Cannot start chat due to WebSocket connection error');
       return;
     }
 
@@ -331,7 +150,7 @@ const VideoChat: React.FC = observer(() => {
         localVideoRef.current.srcObject = stream;
       }
 
-      mediaStreamRef.current = stream;
+      setMediaStream(stream);
       setIsChatActive(true);
       setIsWaiting(false);
 
@@ -354,8 +173,7 @@ const VideoChat: React.FC = observer(() => {
   const handleStopChat = () => {
     logEvent('Stopping chat');
     // Stop WebRTC connections
-    Object.values(peerConnections).forEach(pc => pc.close());
-    setPeerConnections({});
+    cleanupWebRTC();
 
     // Stop media streams
     if (mediaStreamRef.current) {
@@ -367,7 +185,6 @@ const VideoChat: React.FC = observer(() => {
     }
     setIsChatActive(false);
     setIsWaiting(false);
-    setRemoteVideos([]);
   };
 
   const handleNextChat = () => {
@@ -450,27 +267,13 @@ const VideoChat: React.FC = observer(() => {
     }
 
     logEvent('Setting up WebSocket connection');
-    websocket.current = setupWebSocket();
-
-    return () => {
-      logEvent('Cleaning up video chat component');
-      if (websocket.current) {
-        websocket.current.close();
-      }
-      if (mediaStreamRef.current) {
-        mediaStreamRef.current.getTracks().forEach(track => track.stop());
-      }
-    };
-  }, [currentUser]);
-
-  const setupWebSocket = () => {
-    if (!currentUser) return null;
-
     const ws = new WebSocket(`ws://localhost:8093/ws?userId=${currentUser.id}`);
+    setWebSocket(ws);
 
     ws.onopen = () => {
       logEvent('WebSocket connection established');
       setError(null);
+      setWsConnected(true);
     };
 
     ws.onmessage = (event) => {
@@ -492,14 +295,6 @@ const VideoChat: React.FC = observer(() => {
           case 'userLeft':
             logEvent('User left', { userId: message.userId });
             // Handle user leaving
-            if (peerConnections[message.userId]) {
-              peerConnections[message.userId].close();
-              setPeerConnections(prev => {
-                const newConnections = { ...prev };
-                delete newConnections[message.userId];
-                return newConnections;
-              });
-            }
             break;
           case 'offer':
           case 'answer':
@@ -518,24 +313,38 @@ const VideoChat: React.FC = observer(() => {
 
     ws.onclose = (event) => {
       logEvent('WebSocket connection closed');
+      setWsConnected(false);
       if (isChatActive && !event.wasClean) {
         setError({
           type: 'connection',
           message: 'Connection closed unexpectedly. Please try reconnecting.'
         });
+        handleStopChat(); // Stop the chat if connection is lost
       }
     };
 
     ws.onerror = () => {
       logEvent('WebSocket connection error');
+      setWsConnected(false);
       setError({
         type: 'connection',
         message: 'WebSocket connection error. Please try again.'
       });
+      if (isChatActive) {
+        handleStopChat(); // Stop the chat if connection errors out
+      }
     };
 
-    return ws;
-  };
+    return () => {
+      logEvent('Cleaning up video chat component');
+      if (ws) {
+        ws.close();
+      }
+      if (mediaStreamRef.current) {
+        mediaStreamRef.current.getTracks().forEach(track => track.stop());
+      }
+    };
+  }, [currentUser]);
 
   return (
     <div className="flex flex-col h-screen bg-theme-background text-theme-foreground">
