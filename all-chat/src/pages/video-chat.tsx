@@ -150,13 +150,23 @@ const VideoChat: React.FC = observer(() => {
 
   const handleToggleVideo = () => {
     if (mediaStreamRef.current) {
-      toggleVideo(mediaStreamRef.current);
+      const videoTrack = mediaStreamRef.current.getVideoTracks()[0];
+      if (videoTrack) {
+        videoTrack.enabled = !isVideoOn;
+        toggleVideo();
+        logEvent('Video track toggled', { enabled: !isVideoOn });
+      }
     }
   };
 
   const handleToggleAudio = () => {
     if (mediaStreamRef.current) {
-      toggleAudio(mediaStreamRef.current);
+      const audioTrack = mediaStreamRef.current.getAudioTracks()[0];
+      if (audioTrack) {
+        audioTrack.enabled = !isAudioOn;
+        toggleAudio();
+        logEvent('Audio track toggled', { enabled: !isAudioOn });
+      }
     }
   };
 
@@ -231,61 +241,64 @@ const VideoChat: React.FC = observer(() => {
 
     ws.onmessage = (event) => {
       try {
-        // Parse and handle incoming WebSocket messages
         const message = JSON.parse(event.data);
+        logEvent('Received WebSocket message', { type: message.type });
+        
         switch (message.type) {
           case 'chat':
             logEvent('Received chat message', { message: message.message });
             store.chatStore.addMessage(message.message);
             break;
+            
           case 'userJoined':
             logEvent('User joined', { userId: message.userId });
-            // Handle new user joining
             if (isChatActive && message.userId !== currentUser.id) {
               initiateCall(message.userId);
             }
             break;
+            
           case 'userLeft':
             logEvent('User left', { userId: message.userId });
-            // Handle user leaving
             break;
+            
           case 'offer':
           case 'answer':
           case 'ice-candidate':
-            handleWebRTCSignaling(message);
+            if (isChatActive) {
+              handleWebRTCSignaling(message);
+            }
             break;
+            
           default:
-            logEvent('Received message', { data: message });
+            logEvent('Received unknown message type', { type: message.type });
         }
       } catch (err) {
-        // Handle WebSocket message parsing errors safely
         const errorMessage = err instanceof Error ? err.message : 'Unknown error occurred';
         logEvent('Error parsing WebSocket message', { error: errorMessage });
       }
     };
 
     ws.onclose = (event) => {
-      logEvent('WebSocket connection closed');
+      logEvent('WebSocket connection closed', { 
+        code: event.code,
+        reason: event.reason,
+        wasClean: event.wasClean 
+      });
       setWsConnected(false);
       if (isChatActive && !event.wasClean) {
         setError({
           type: 'connection',
-          message: 'Connection closed unexpectedly. Please try reconnecting.'
+          message: 'Connection to chat server lost. Please refresh the page.'
         });
-        handleStopChat(); // Stop the chat if connection is lost
       }
     };
 
     ws.onerror = () => {
       logEvent('WebSocket connection error');
-      setWsConnected(false);
       setError({
         type: 'connection',
-        message: 'WebSocket connection error. Please try again.'
+        message: 'Failed to connect to chat server. Please check your connection and try again.'
       });
-      if (isChatActive) {
-        handleStopChat(); // Stop the chat if connection errors out
-      }
     };
 
     return () => {

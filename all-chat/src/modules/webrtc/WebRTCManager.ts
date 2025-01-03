@@ -21,11 +21,40 @@ export const useWebRTC = (currentUserId?: string) => {
   const mediaStreamRef = useRef<MediaStream | null>(null);
   const websocket = useRef<WebSocket | null>(null);
 
+  const cleanupPeerConnection = (remoteUserId: string) => {
+    logEvent('Cleaning up peer connection', { remoteUserId });
+    const pc = peerConnections[remoteUserId];
+    if (pc) {
+      pc.close();
+      const newConnections = { ...peerConnections };
+      delete newConnections[remoteUserId];
+      setPeerConnections(newConnections);
+      
+      // Remove associated video element
+      setRemoteVideos(prev => prev.filter((_, index) => 
+        index !== Object.keys(peerConnections).indexOf(remoteUserId)
+      ));
+    }
+  };
+
   const createPeerConnection = (remoteUserId: string) => {
     logEvent('Creating peer connection', { remoteUserId });
     try {
       // Initialize RTCPeerConnection with ICE servers for WebRTC
       const peerConnection = new RTCPeerConnection(configuration);
+
+      // Add local tracks to the peer connection
+      if (mediaStreamRef.current) {
+        mediaStreamRef.current.getTracks().forEach(track => {
+          if (mediaStreamRef.current) {
+            peerConnection.addTrack(track, mediaStreamRef.current);
+            logEvent('Added local track to peer connection', { 
+              remoteUserId, 
+              trackKind: track.kind 
+            });
+          }
+        });
+      }
 
       peerConnection.onicecandidate = (event) => {
         if (event.candidate && websocket.current) {
@@ -48,38 +77,33 @@ export const useWebRTC = (currentUserId?: string) => {
         queueMicrotask(() => {
           if (newVideoRef.current) {
             newVideoRef.current.srcObject = remoteStream;
+            newVideoRef.current.play().catch(err => {
+              logEvent('Error playing remote stream', { error: err.message });
+            });
             logEvent('Remote stream attached to video element', { remoteUserId });
           }
         });
       };
 
       peerConnection.onconnectionstatechange = () => {
-        logEvent('Peer connection state changed', { 
-          remoteUserId, 
-          state: peerConnection.connectionState 
+        logEvent('Connection state changed', { 
+          state: peerConnection.connectionState,
+          remoteUserId 
         });
+        
+        switch (peerConnection.connectionState) {
+          case 'connected':
+            logEvent('Connected to peer', { remoteUserId });
+            break;
+          case 'disconnected':
+          case 'failed':
+            logEvent('Connection lost', { remoteUserId });
+            cleanupPeerConnection(remoteUserId);
+            break;
+        }
       };
 
-      peerConnection.oniceconnectionstatechange = () => {
-        logEvent('ICE connection state changed', {
-          remoteUserId,
-          state: peerConnection.iceConnectionState
-        });
-      };
-
-      if (mediaStreamRef.current) {
-        const tracks = mediaStreamRef.current.getTracks();
-        logEvent('Adding local tracks to peer connection', { 
-          remoteUserId, 
-          trackCount: tracks.length 
-        });
-        tracks.forEach(track => {
-          if (mediaStreamRef.current) {
-            peerConnection.addTrack(track, mediaStreamRef.current);
-          }
-        });
-      }
-
+      // Store the peer connection
       setPeerConnections(prev => ({
         ...prev,
         [remoteUserId]: peerConnection
@@ -88,18 +112,14 @@ export const useWebRTC = (currentUserId?: string) => {
       return peerConnection;
     } catch (err) {
       const errorMessage = err instanceof Error ? err.message : 'Unknown error occurred';
-      logEvent('Error creating peer connection', { 
-        remoteUserId, 
-        error: errorMessage 
-      });
+      logEvent('Error creating peer connection', { error: errorMessage });
       return null;
     }
   };
 
-  const handleWebRTCSignaling = async (data: any) => {
-    const { type, from, to, sdp, candidate } = data;
-    logEvent('Received WebRTC signal', { type, from, to });
-
+  const handleWebRTCSignaling = async (message: any) => {
+    const { type, from, to, sdp, candidate } = message;
+    
     if (to !== currentUserId) return;
 
     let pc = peerConnections[from];
@@ -114,30 +134,38 @@ export const useWebRTC = (currentUserId?: string) => {
     }
 
     try {
-      if (type === 'offer') {
-        await pc.setRemoteDescription(new RTCSessionDescription(sdp));
-        const answer = await pc.createAnswer();
-        await pc.setLocalDescription(answer);
-
-        if (websocket.current) {
-          websocket.current.send(JSON.stringify({
-            type: 'answer',
-            sdp: answer,
-            to: from,
-            from: currentUserId
-          }));
-        }
-      } else if (type === 'answer') {
-        await pc.setRemoteDescription(new RTCSessionDescription(sdp));
-      } else if (type === 'ice-candidate') {
-        await pc.addIceCandidate(new RTCIceCandidate(candidate));
+      switch (type) {
+        case 'offer':
+          logEvent('Received offer', { from });
+          await pc.setRemoteDescription(new RTCSessionDescription(sdp));
+          const answer = await pc.createAnswer();
+          await pc.setLocalDescription(answer);
+          
+          if (websocket.current) {
+            websocket.current.send(JSON.stringify({
+              type: 'answer',
+              sdp: answer,
+              to: from,
+              from: currentUserId
+            }));
+          }
+          break;
+          
+        case 'answer':
+          logEvent('Received answer', { from });
+          await pc.setRemoteDescription(new RTCSessionDescription(sdp));
+          break;
+          
+        case 'ice-candidate':
+          logEvent('Received ICE candidate', { from });
+          if (pc.remoteDescription) {
+            await pc.addIceCandidate(new RTCIceCandidate(candidate));
+          }
+          break;
       }
     } catch (err) {
       const errorMessage = err instanceof Error ? err.message : 'Unknown error occurred';
-      logEvent('Error handling WebRTC signaling', { 
-        type, 
-        error: errorMessage 
-      });
+      logEvent('Error in WebRTC signaling', { error: errorMessage });
     }
   };
 
@@ -160,10 +188,8 @@ export const useWebRTC = (currentUserId?: string) => {
       }
     } catch (err) {
       const errorMessage = err instanceof Error ? err.message : 'Unknown error occurred';
-      logEvent('Error initiating call', { 
-        remoteUserId, 
-        error: errorMessage 
-      });
+      logEvent('Error creating offer', { error: errorMessage });
+      cleanupPeerConnection(remoteUserId);
     }
   };
 
@@ -176,16 +202,18 @@ export const useWebRTC = (currentUserId?: string) => {
   };
 
   const cleanup = () => {
-    Object.values(peerConnections).forEach(pc => pc.close());
-    setPeerConnections({});
-    setRemoteVideos([]);
-    mediaStreamRef.current = null;
+    // Close all peer connections
+    Object.keys(peerConnections).forEach(cleanupPeerConnection);
+    
+    // Stop all tracks in the media stream
+    if (mediaStreamRef.current) {
+      mediaStreamRef.current.getTracks().forEach(track => track.stop());
+      mediaStreamRef.current = null;
+    }
   };
 
   return {
-    peerConnections,
     remoteVideos,
-    createPeerConnection,
     handleWebRTCSignaling,
     initiateCall,
     setMediaStream,

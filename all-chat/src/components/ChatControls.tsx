@@ -1,7 +1,6 @@
 import React from 'react';
 import { Button } from "@/components/ui/button"
 import { Users, Minus, Plus } from 'lucide-react';
-import styles from '@/styles/shared.module.css';
 
 interface ChatControlsProps {
   groupSize: number | 'any';
