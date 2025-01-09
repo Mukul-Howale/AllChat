@@ -17,7 +17,6 @@ const VideoChat: React.FC = observer(() => {
   const router = useRouter();
   const store = useStore();
   const { currentUser } = store.userStore;
-  const [groupSize, setGroupSize] = useState<number | 'any'>(2);
   const [isChatActive, setIsChatActive] = useState(false);
   const [isWaiting, setIsWaiting] = useState(false);
   const [messages, setMessages] = useState<{ content: string; sender: string; id: string; timestamp: Date }[]>([]);
@@ -101,8 +100,7 @@ const VideoChat: React.FC = observer(() => {
       // Send ready signal to server
       if (websocket.current) {
         websocket.current.send(JSON.stringify({
-          type: 'ready',
-          groupSize
+          type: 'ready'
         }));
       }
     } catch (err: any) {
@@ -197,14 +195,13 @@ const VideoChat: React.FC = observer(() => {
           <Clock className="w-16 h-16 text-theme-primary animate-pulse" />
           <h2 className="text-2xl font-bold text-center text-theme-foreground">Waiting for others to join...</h2>
           <p className="text-center text-theme-muted-foreground text-sm">
-            {typeof groupSize === 'number' ? `${groupSize - 1} more ${groupSize - 1 === 1 ? 'person' : 'people'} needed` : 'Waiting for others'} to start the chat
+            Waiting for others to start the chat
           </p>
         </div>
       );
     } else if (isChatActive) {
       return (
         <VideoGrid 
-          groupSize={groupSize} 
           localVideoRef={localVideoRef} 
           remoteVideos={remoteVideos} 
           isChatActive={isChatActive}
@@ -215,7 +212,7 @@ const VideoChat: React.FC = observer(() => {
         <div className="flex flex-col items-center justify-center h-full space-y-4 p-4">
           <h2 className="text-2xl font-bold text-center text-theme-foreground">Ready to start a new chat?</h2>
           <p className="text-center text-theme-muted-foreground text-sm">
-            Select the number of participants and click "Start Chat" when you're ready.
+            Click "Start Chat" when you're ready.
           </p>
         </div>
       );
@@ -340,8 +337,6 @@ const VideoChat: React.FC = observer(() => {
               hasAudio={hasAudio}
             />
             <ChatControls
-              groupSize={groupSize}
-              setGroupSize={setGroupSize}
               isChatActive={isChatActive}
               isWaiting={isWaiting}
               handleStartChat={handleStartChat}
