@@ -6,9 +6,10 @@ interface VideoGridProps {
   localVideoRef: React.RefObject<HTMLVideoElement>;
   remoteVideos: React.RefObject<HTMLVideoElement>[];
   isChatActive: boolean;
+  className?: string;
 }
 
-const VideoGrid: React.FC<VideoGridProps> = ({ localVideoRef, remoteVideos, isChatActive }) => {
+const VideoGrid: React.FC<VideoGridProps> = ({ localVideoRef, remoteVideos, isChatActive, className }) => {
   // Always use 2-person layout
   const getGridClass = () => {
     return 'grid-cols-1 md:grid-cols-2'; // Stack vertically on mobile, side by side on desktop
@@ -24,7 +25,7 @@ const VideoGrid: React.FC<VideoGridProps> = ({ localVideoRef, remoteVideos, isCh
   };
 
   return (
-    <div className={`grid ${getGridClass()} gap-2 w-full h-full p-2 md:p-4`}>
+    <div className={`grid ${getGridClass()} gap-2 w-full h-full p-2 md:p-4 ${className}`}>
       {Array.from({ length: 2 }, (_, index) => (
         <div 
           key={index} 

@@ -19,6 +19,8 @@ const VideoChat: React.FC = observer(() => {
   const { currentUser } = store.userStore;
   const [isChatActive, setIsChatActive] = useState(false);
   const [isWaiting, setIsWaiting] = useState(false);
+  const [isMatched, setIsMatched] = useState(false);
+  const [matchedUsers, setMatchedUsers] = useState<string[]>([]);
   const [messages, setMessages] = useState<{ content: string; sender: string; id: string; timestamp: Date }[]>([]);
   const [error, setError] = useState<{ type: 'media' | 'connection' | 'other'; message: string } | null>(null);
   const [wsConnected, setWsConnected] = useState(false);
@@ -77,6 +79,7 @@ const VideoChat: React.FC = observer(() => {
 
     try {
       setIsWaiting(true);
+      setIsMatched(false);
       logEvent('Checking if getUserMedia is supported');
       if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
         setError({
@@ -94,13 +97,12 @@ const VideoChat: React.FC = observer(() => {
       }
 
       setMediaStream(stream);
-      setIsChatActive(true);
-      setIsWaiting(false);
 
-      // Send ready signal to server
+      // Send looking-for-match signal to server instead of ready
       if (websocket.current) {
         websocket.current.send(JSON.stringify({
-          type: 'ready'
+          type: 'looking-for-match',
+          userId: currentUser.id
         }));
       }
     } catch (err: any) {
@@ -110,6 +112,7 @@ const VideoChat: React.FC = observer(() => {
         message: err.message || 'Failed to access media devices. Please check your camera and microphone permissions.'
       });
       setIsWaiting(false);
+      setIsMatched(false);
       setIsChatActive(false);
     }
   };
@@ -137,6 +140,8 @@ const VideoChat: React.FC = observer(() => {
     stopMediaStream();
     setIsChatActive(false);
     setIsWaiting(false);
+    setIsMatched(false);
+    setMatchedUsers([]);
   };
 
   const handleNextChat = async () => {
@@ -189,34 +194,68 @@ const VideoChat: React.FC = observer(() => {
   };
 
   const renderVideoArea = () => {
-    if (isWaiting) {
+    if (error) {
       return (
-        <div className="flex flex-col items-center justify-center h-full space-y-4 p-4">
-          <Clock className="w-16 h-16 text-theme-primary animate-pulse" />
-          <h2 className="text-2xl font-bold text-center text-theme-foreground">Waiting for others to join...</h2>
-          <p className="text-center text-theme-muted-foreground text-sm">
-            Waiting for others to start the chat
-          </p>
-        </div>
-      );
-    } else if (isChatActive) {
-      return (
-        <VideoGrid 
-          localVideoRef={localVideoRef} 
-          remoteVideos={remoteVideos} 
-          isChatActive={isChatActive}
-        />
-      );
-    } else {
-      return (
-        <div className="flex flex-col items-center justify-center h-full space-y-4 p-4">
-          <h2 className="text-2xl font-bold text-center text-theme-foreground">Ready to start a new chat?</h2>
-          <p className="text-center text-theme-muted-foreground text-sm">
-            Click "Start Chat" when you're ready.
-          </p>
+        <div className="flex flex-col items-center justify-center h-full">
+          <p className="text-red-500 mb-4">{error.message}</p>
+          <button
+            onClick={() => setError(null)}
+            className="px-4 py-2 bg-blue-500 text-white rounded hover:bg-blue-600"
+          >
+            Try Again
+          </button>
         </div>
       );
     }
+
+    if (isWaiting) {
+      return (
+        <div className="flex flex-col items-center justify-center h-full">
+          <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-blue-500 mb-4"></div>
+          <p className="text-lg text-gray-700">Looking for chat partners...</p>
+          <button
+            onClick={handleStopChat}
+            className="mt-4 px-4 py-2 bg-red-500 text-white rounded hover:bg-red-600"
+          >
+            Cancel
+          </button>
+        </div>
+      );
+    }
+
+    if (!isChatActive) {
+      return (
+        <div className="flex flex-col items-center justify-center h-full">
+          <button
+            onClick={handleStartChat}
+            className="px-6 py-3 bg-blue-500 text-white rounded-lg hover:bg-blue-600 text-lg"
+          >
+            Start Chat
+          </button>
+        </div>
+      );
+    }
+
+    return (
+      <div className="relative h-full">
+        <VideoGrid
+          localVideoRef={localVideoRef}
+          remoteVideos={remoteVideos}
+          isChatActive={isChatActive}
+          className="h-full"
+        />
+        <div className="absolute bottom-4 left-1/2 transform -translate-x-1/2">
+          <MediaControls
+            isVideoOn={isVideoOn}
+            isAudioOn={isAudioOn}
+            hasVideo={hasVideo}
+            hasAudio={hasAudio}
+            toggleVideo={handleToggleVideo}
+            toggleAudio={handleToggleAudio}
+          />
+        </div>
+      </div>
+    );
   };
 
   useEffect(() => {
@@ -247,21 +286,44 @@ const VideoChat: React.FC = observer(() => {
             store.chatStore.addMessage(message.message);
             break;
             
-          case 'userJoined':
-            logEvent('User joined', { userId: message.userId });
-            if (isChatActive && message.userId !== currentUser.id) {
-              initiateCall(message.userId);
-            }
+          case 'match-found':
+            logEvent('Match found', { users: message.users });
+            setMatchedUsers(message.users);
+            setIsMatched(true);
+            setIsWaiting(false);
+            // Only now set chat as active
+            setIsChatActive(true);
+            // Initiate calls to all matched users
+            message.users.forEach((userId: string) => {
+              if (userId !== currentUser.id) {
+                initiateCall(userId);
+              }
+            });
             break;
             
-          case 'userLeft':
-            logEvent('User left', { userId: message.userId });
+          case 'match-cancelled':
+            logEvent('Match cancelled');
+            setIsMatched(false);
+            setIsWaiting(false);
+            setIsChatActive(false);
+            setMatchedUsers([]);
+            break;
+
+          case 'user-left-match':
+            logEvent('User left match', { userId: message.userId });
+            setMatchedUsers(prev => prev.filter(id => id !== message.userId));
+            // If not enough users remain, end the chat
+            if (matchedUsers.length < 2) {
+              setIsMatched(false);
+              setIsChatActive(false);
+              setMatchedUsers([]);
+            }
             break;
             
           case 'offer':
           case 'answer':
           case 'ice-candidate':
-            if (isChatActive) {
+            if (isChatActive && isMatched) {
               handleWebRTCSignaling(message);
             }
             break;
@@ -314,37 +376,7 @@ const VideoChat: React.FC = observer(() => {
       <Header/>
       <div className="flex flex-grow overflow-hidden p-4">
         <div className="flex flex-col w-3/4 pr-4">
-          {isWaiting && (
-            <div className="flex items-center justify-center h-full">
-              <div className={`flex flex-col items-center bg-theme-surface p-6 elevation-2 ${styles.container}`}>
-                <Clock className="w-12 h-12 text-theme-primary mb-4" />
-                <p className="text-theme-foreground text-lg font-medium">
-                  Waiting for a chat partner...
-                </p>
-              </div>
-            </div>
-          )}
-          <div className={`flex-grow bg-theme-surface overflow-hidden mb-4 elevation-1 ${styles.container}`}>
-            {renderVideoArea()}
-          </div>
-          <div className={`flex items-center justify-between p-2 bg-theme-surface elevation-1 ${styles.container}`}>
-            <MediaControls
-              isVideoOn={isVideoOn}
-              isAudioOn={isAudioOn}
-              toggleVideo={handleToggleVideo}
-              toggleAudio={handleToggleAudio}
-              hasVideo={hasVideo}
-              hasAudio={hasAudio}
-            />
-            <ChatControls
-              isChatActive={isChatActive}
-              isWaiting={isWaiting}
-              handleStartChat={handleStartChat}
-              handleStopChat={handleStopChat}
-              handleNextChat={handleNextChat}
-            />
-            <div className="w-1/4"></div>
-          </div>
+          {renderVideoArea()}
         </div>
         <div className="w-1/4 flex flex-col">
           <div className={`flex-grow bg-theme-surface overflow-hidden elevation-1 ${styles.container}`}>
