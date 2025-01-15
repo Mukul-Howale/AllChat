@@ -332,12 +332,26 @@ const VideoChat: React.FC = observer(() => {
           code: event.code,
           reason: event.reason,
           wasClean: event.wasClean,
-          url: fullUrl
+          url: fullUrl,
+          isChatActive
         });
         setWsConnected(false);
+
+        // Don't show error for normal closures when chat is not active
+        if (event.code === 1000 && !isChatActive) {
+          return;
+        }
+
+        // Don't show error for normal closures during cleanup
+        if (event.code === 1000 && event.wasClean) {
+          return;
+        }
+
         setError({
           type: 'connection',
-          message: `Connection to chat server lost (${event.code}). Please refresh the page.`
+          message: event.code === 1006 
+            ? 'Connection lost unexpectedly. Please check your network connection.'
+            : 'Connection to chat server lost. Please refresh the page.'
         });
       };
 
@@ -348,10 +362,13 @@ const VideoChat: React.FC = observer(() => {
           readyState: ws.readyState
         });
         setWsConnected(false);
-        setError({
-          type: 'connection',
-          message: 'Error connecting to chat server. Please check your connection and try again.'
-        });
+        // Only set error if we're not already handling it in onclose
+        if (ws.readyState !== WebSocket.CLOSED && ws.readyState !== WebSocket.CLOSING) {
+          setError({
+            type: 'connection',
+            message: 'Error connecting to chat server. Please check your connection and try again.'
+          });
+        }
       };
 
       ws.onmessage = (event) => {
@@ -447,7 +464,7 @@ const VideoChat: React.FC = observer(() => {
     return () => {
       logEvent('Cleaning up video chat component');
       if (ws) {
-        ws.close();
+        ws.close(1000, 'Chat ended normally');
       }
     };
   }, [currentUser, isWaiting, isMatched]);
