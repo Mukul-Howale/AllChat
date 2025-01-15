@@ -1,7 +1,14 @@
-import { useRef, useState } from 'react';
+import { useRef, useState, useEffect } from 'react';
 import { logEvent } from '@/utils/logging';
 import { safeSendWebSocket } from '@/utils/websocket';
 import React from 'react';
+import {
+  getMediaDevices,
+  switchCamera,
+  getOptimizedConstraints,
+  handleOrientationChange,
+  MediaDeviceInfo
+} from '@/modules/media/MobileMediaUtils';
 
 export interface WebRTCState {
   peerConnections: { [key: string]: RTCPeerConnection };
@@ -19,8 +26,38 @@ const configuration: RTCConfiguration = {
 export const useWebRTC = (currentUserId?: string) => {
   const [peerConnections, setPeerConnections] = useState<{ [key: string]: RTCPeerConnection }>({});
   const [remoteVideos, setRemoteVideos] = useState<React.RefObject<HTMLVideoElement>[]>([]);
+  const [availableDevices, setAvailableDevices] = useState<{
+    videoDevices: MediaDeviceInfo[];
+    audioDevices: MediaDeviceInfo[];
+  }>({ videoDevices: [], audioDevices: [] });
   const mediaStreamRef = useRef<MediaStream | null>(null);
   const websocket = useRef<WebSocket | null>(null);
+
+  // Handle device enumeration
+  useEffect(() => {
+    const initializeDevices = async () => {
+      try {
+        const devices = await getMediaDevices();
+        setAvailableDevices(devices);
+      } catch (error) {
+        logEvent('Error initializing devices', { error });
+      }
+    };
+
+    initializeDevices();
+  }, []);
+
+  // Handle orientation changes
+  useEffect(() => {
+    const handleOrientation = async () => {
+      if (mediaStreamRef.current) {
+        await handleOrientationChange(mediaStreamRef.current);
+      }
+    };
+
+    window.addEventListener('orientationchange', handleOrientation);
+    return () => window.removeEventListener('orientationchange', handleOrientation);
+  }, []);
 
   const cleanupPeerConnection = (remoteUserId: string) => {
     logEvent('Cleaning up peer connection', { remoteUserId });
@@ -199,8 +236,48 @@ export const useWebRTC = (currentUserId?: string) => {
     }
   };
 
-  const setMediaStream = (stream: MediaStream) => {
-    mediaStreamRef.current = stream;
+  const setMediaStream = async (stream: MediaStream) => {
+    try {
+      // Get optimized constraints based on network conditions
+      const optimizedConstraints = await getOptimizedConstraints();
+      
+      // Apply optimized constraints to the stream
+      const videoTrack = stream.getVideoTracks()[0];
+      if (videoTrack) {
+        await videoTrack.applyConstraints(optimizedConstraints.video as MediaTrackConstraints);
+      }
+
+      mediaStreamRef.current = stream;
+      
+      // Update all peer connections with the new stream
+      Object.values(peerConnections).forEach(pc => {
+        const senders = pc.getSenders();
+        senders.forEach(sender => {
+          if (sender.track?.kind === 'video') {
+            sender.replaceTrack(videoTrack);
+          }
+        });
+      });
+    } catch (error) {
+      logEvent('Error setting media stream', { error });
+    }
+  };
+
+  // Add new method for switching cameras
+  const switchCameraDevice = async () => {
+    try {
+      if (!mediaStreamRef.current) {
+        throw new Error('No media stream available');
+      }
+
+      const newStream = await switchCamera(mediaStreamRef.current);
+      await setMediaStream(newStream);
+
+      return newStream;
+    } catch (error) {
+      logEvent('Error switching camera', { error });
+      throw error;
+    }
   };
 
   const setWebSocket = (ws: WebSocket) => {
@@ -224,6 +301,8 @@ export const useWebRTC = (currentUserId?: string) => {
     initiateCall,
     setMediaStream,
     setWebSocket,
-    cleanup
+    cleanup,
+    switchCameraDevice,
+    availableDevices
   };
 };
