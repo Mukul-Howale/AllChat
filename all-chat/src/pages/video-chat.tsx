@@ -12,6 +12,7 @@ import styles from '@/styles/shared.module.css';
 import { useWebRTC } from '@/modules/webrtc/WebRTCManager';
 import { useMediaStream } from '@/modules/media/MediaManager';
 import { logEvent } from '@/utils/logging';
+import { getWebSocketUrl } from '@/config/websocket';
 
 const VideoChat: React.FC = observer(() => {
   const router = useRouter();
@@ -270,8 +271,12 @@ const VideoChat: React.FC = observer(() => {
     }
 
     logEvent('Setting up WebSocket connection');
-    const ws = new WebSocket(`ws://localhost:8093/ws?userId=${currentUser.id}`);
+    const wsUrl = getWebSocketUrl();
+    const ws = new WebSocket(`${wsUrl}?userId=${currentUser.id}`);
     setWebSocket(ws);
+    websocket.current = ws;
+
+    logEvent('Connecting to WebSocket', { url: wsUrl });
 
     ws.onopen = () => {
       logEvent('WebSocket connection established');
