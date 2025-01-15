@@ -74,6 +74,23 @@ const VideoChat: React.FC = observer(() => {
       readyState: websocket.current?.readyState 
     });
 
+    // If WebSocket is connecting, wait for it
+    if (websocket.current && websocket.current.readyState === WebSocket.CONNECTING) {
+      logEvent('WebSocket is still connecting, waiting...');
+      await new Promise<void>((resolve) => {
+        const checkConnection = () => {
+          if (websocket.current?.readyState === WebSocket.OPEN) {
+            resolve();
+          } else if (websocket.current?.readyState === WebSocket.CLOSED || websocket.current?.readyState === WebSocket.CLOSING) {
+            resolve(); // Resolve anyway to handle the error in the next check
+          } else {
+            setTimeout(checkConnection, 100);
+          }
+        };
+        checkConnection();
+      });
+    }
+
     if (!wsConnected || !websocket.current || websocket.current.readyState !== WebSocket.OPEN) {
       logEvent('Cannot start chat - WebSocket not connected');
       setError({
@@ -123,8 +140,13 @@ const VideoChat: React.FC = observer(() => {
         type: 'looking-for-match',
         userId: currentUser.id
       });
-      websocket.current.send(message);
-      logEvent('Sent looking-for-match message successfully');
+      
+      if (websocket.current?.readyState === WebSocket.OPEN) {
+        websocket.current.send(message);
+        logEvent('Sent looking-for-match message successfully');
+      } else {
+        throw new Error('WebSocket connection lost while starting chat');
+      }
 
     } catch (err: any) {
       logEvent('Error starting chat', { error: err.message });
@@ -144,10 +166,7 @@ const VideoChat: React.FC = observer(() => {
   };
 
   const handleStopChat = () => {
-    logEvent('Stopping chat');
-    
-    // Send end chat message to server
-    if (isMatched) {
+    if (websocket.current && websocket.current.readyState === WebSocket.OPEN) {
       safeSendWebSocket(websocket.current, {
         type: 'END_CHAT',
         userId: currentUser?.id
@@ -293,6 +312,157 @@ const VideoChat: React.FC = observer(() => {
     );
   };
 
+  const onopen = () => {
+    logEvent('WebSocket connection established', {
+      url: websocket.current?.url,
+      readyState: websocket.current?.readyState
+    });
+    setError(null);
+    setWsConnected(true);
+    
+    // If we're waiting for a match when the connection opens/reopens, resend the looking-for-match message
+    if (isWaiting && !isMatched) {
+      logEvent('Resending looking-for-match after connection established');
+      websocket.current?.send(JSON.stringify({
+        type: 'looking-for-match',
+        userId: currentUser?.id
+      }));
+    }
+  };
+
+  const onclose = (event: CloseEvent) => {
+    logEvent('WebSocket connection closed', {
+      code: event.code,
+      reason: event.reason,
+      wasClean: event.wasClean,
+      url: websocket.current?.url,
+      isChatActive
+    });
+    setWsConnected(false);
+
+    // Don't show error for normal closures when chat is not active
+    if (event.code === 1000 && !isChatActive) {
+      return;
+    }
+
+    // Don't show error for normal closures during cleanup
+    if (event.code === 1000 && event.wasClean) {
+      return;
+    }
+
+    setError({
+      type: 'connection',
+      message: event.code === 1006 
+        ? 'Connection lost unexpectedly. Please check your network connection.'
+        : 'Connection to chat server lost. Please refresh the page.'
+    });
+  };
+
+  const onerror = (error: Event) => {
+    logEvent('WebSocket error occurred', { 
+      error,
+      url: websocket.current?.url,
+      readyState: websocket.current?.readyState
+    });
+    setWsConnected(false);
+    // Only set error if we're not already handling it in onclose
+    if (websocket.current?.readyState !== WebSocket.CLOSED && websocket.current?.readyState !== WebSocket.CLOSING) {
+      setError({
+        type: 'connection',
+        message: 'Error connecting to chat server. Please check your connection and try again.'
+      });
+    }
+  };
+
+  const onmessage = (event: MessageEvent) => {
+    try {
+      const message = JSON.parse(event.data);
+      logEvent('Received WebSocket message', { 
+        type: message.type,
+        data: event.data
+      });
+      
+      switch (message.type) {
+        case 'chat':
+          logEvent('Received chat message', { message: message.message });
+          store.chatStore.addMessage(message.message);
+          break;
+          
+        case 'match-found':
+          logEvent('Match found', { users: message.users });
+          setMatchedUsers(message.users);
+          setIsMatched(true);
+          setIsWaiting(false);
+          setIsChatActive(true);
+          // Initiate calls to all matched users
+          message.users.forEach((userId: string) => {
+            if (userId !== currentUser?.id) {
+              initiateCall(userId);
+            }
+          });
+          break;
+          
+        case 'match-cancelled':
+          logEvent('Match cancelled');
+          setIsMatched(false);
+          setIsWaiting(false);
+          setIsChatActive(false);
+          setMatchedUsers([]);
+          cleanupWebRTC();
+          break;
+
+        case 'user-left-match':
+          logEvent('User left match', { userId: message.userId });
+          setMatchedUsers(prev => prev.filter(id => id !== message.userId));
+          // If not enough users remain, end the chat
+          if (matchedUsers.length < MIN_GROUP_SIZE) {
+            setIsMatched(false);
+            setIsChatActive(false);
+            setMatchedUsers([]);
+            cleanupWebRTC();
+          }
+          break;
+
+        case 'chat-ended':
+          logEvent('Chat ended');
+          setIsMatched(false);
+          setIsChatActive(false);
+          setMatchedUsers([]);
+          cleanupWebRTC();
+          break;
+
+        case 'END_CHAT':
+          if (message.userId !== currentUser?.id) {
+            // Other user ended the chat
+            handleStopChat();
+            setIsWaiting(true);
+            handleStartChat();
+          }
+          break;
+
+        case 'offer':
+        case 'answer':
+        case 'ice-candidate':
+          if (isChatActive && isMatched && matchedUsers.includes(message.from)) {
+            handleWebRTCSignaling(message);
+          } else {
+            logEvent('Ignored WebRTC signal - invalid state or sender', {
+              isChatActive,
+              isMatched,
+              isValidSender: matchedUsers.includes(message.from)
+            });
+          }
+          break;
+          
+        default:
+          logEvent('Received unknown message type', { type: message.type });
+      }
+    } catch (error) {
+      const errorMessage = error instanceof Error ? error.message : 'Unknown error occurred';
+      logEvent('Error parsing WebSocket message', { error: errorMessage });
+    }
+  };
+
   useEffect(() => {
     if (!currentUser) {
       logEvent('No current user, redirecting to auth');
@@ -317,163 +487,13 @@ const VideoChat: React.FC = observer(() => {
       url: fullUrl,
       userId: currentUser.id
     });
-    
-    let ws: WebSocket;
+
     try {
-      ws = new WebSocket(fullUrl);
-      setWebSocket(ws);
-      websocket.current = ws;
-
-      ws.onopen = () => {
-        logEvent('WebSocket connection established', {
-          url: fullUrl,
-          readyState: ws.readyState
-        });
-        setError(null);
-        setWsConnected(true);
-        
-        // If we're waiting for a match when the connection opens/reopens, resend the looking-for-match message
-        if (isWaiting && !isMatched) {
-          logEvent('Resending looking-for-match after connection established');
-          ws.send(JSON.stringify({
-            type: 'looking-for-match',
-            userId: currentUser.id
-          }));
-        }
-      };
-
-      ws.onclose = (event) => {
-        logEvent('WebSocket connection closed', {
-          code: event.code,
-          reason: event.reason,
-          wasClean: event.wasClean,
-          url: fullUrl,
-          isChatActive
-        });
-        setWsConnected(false);
-
-        // Don't show error for normal closures when chat is not active
-        if (event.code === 1000 && !isChatActive) {
-          return;
-        }
-
-        // Don't show error for normal closures during cleanup
-        if (event.code === 1000 && event.wasClean) {
-          return;
-        }
-
-        setError({
-          type: 'connection',
-          message: event.code === 1006 
-            ? 'Connection lost unexpectedly. Please check your network connection.'
-            : 'Connection to chat server lost. Please refresh the page.'
-        });
-      };
-
-      ws.onerror = (error) => {
-        logEvent('WebSocket error occurred', { 
-          error,
-          url: fullUrl,
-          readyState: ws.readyState
-        });
-        setWsConnected(false);
-        // Only set error if we're not already handling it in onclose
-        if (ws.readyState !== WebSocket.CLOSED && ws.readyState !== WebSocket.CLOSING) {
-          setError({
-            type: 'connection',
-            message: 'Error connecting to chat server. Please check your connection and try again.'
-          });
-        }
-      };
-
-      ws.onmessage = (event) => {
-        try {
-          const message = JSON.parse(event.data);
-          logEvent('Received WebSocket message', { 
-            type: message.type,
-            data: event.data
-          });
-          
-          switch (message.type) {
-            case 'chat':
-              logEvent('Received chat message', { message: message.message });
-              store.chatStore.addMessage(message.message);
-              break;
-              
-            case 'match-found':
-              logEvent('Match found', { users: message.users });
-              setMatchedUsers(message.users);
-              setIsMatched(true);
-              setIsWaiting(false);
-              setIsChatActive(true);
-              // Initiate calls to all matched users
-              message.users.forEach((userId: string) => {
-                if (userId !== currentUser.id) {
-                  initiateCall(userId);
-                }
-              });
-              break;
-              
-            case 'match-cancelled':
-              logEvent('Match cancelled');
-              setIsMatched(false);
-              setIsWaiting(false);
-              setIsChatActive(false);
-              setMatchedUsers([]);
-              cleanupWebRTC();
-              break;
-
-            case 'user-left-match':
-              logEvent('User left match', { userId: message.userId });
-              setMatchedUsers(prev => prev.filter(id => id !== message.userId));
-              // If not enough users remain, end the chat
-              if (matchedUsers.length < MIN_GROUP_SIZE) {
-                setIsMatched(false);
-                setIsChatActive(false);
-                setMatchedUsers([]);
-                cleanupWebRTC();
-              }
-              break;
-
-            case 'chat-ended':
-              logEvent('Chat ended');
-              setIsMatched(false);
-              setIsChatActive(false);
-              setMatchedUsers([]);
-              cleanupWebRTC();
-              break;
-
-            case 'END_CHAT':
-              if (message.userId !== currentUser?.id) {
-                // Other user ended the chat
-                handleStopChat();
-                setIsWaiting(true);
-                handleStartChat();
-              }
-              break;
-
-            case 'offer':
-            case 'answer':
-            case 'ice-candidate':
-              if (isChatActive && isMatched && matchedUsers.includes(message.from)) {
-                handleWebRTCSignaling(message);
-              } else {
-                logEvent('Ignored WebRTC signal - invalid state or sender', {
-                  isChatActive,
-                  isMatched,
-                  isValidSender: matchedUsers.includes(message.from)
-                });
-              }
-              break;
-              
-            default:
-              logEvent('Received unknown message type', { type: message.type });
-          }
-        } catch (error) {
-          const errorMessage = error instanceof Error ? error.message : 'Unknown error occurred';
-          logEvent('Error parsing WebSocket message', { error: errorMessage });
-        }
-      };
+      websocket.current = new WebSocket(fullUrl);
+      websocket.current.onopen = onopen;
+      websocket.current.onclose = onclose;
+      websocket.current.onerror = onerror;
+      websocket.current.onmessage = onmessage;
     } catch (error) {
       logEvent('Error creating WebSocket', {
         error,
@@ -486,12 +506,13 @@ const VideoChat: React.FC = observer(() => {
     }
 
     return () => {
-      logEvent('Cleaning up video chat component');
-      if (ws) {
-        ws.close(1000, 'Chat ended normally');
+      if (websocket.current) {
+        logEvent('Closing WebSocket connection on unmount');
+        websocket.current.close();
+        websocket.current = null;
       }
     };
-  }, [currentUser, isWaiting, isMatched]);
+  }, [currentUser]);
 
   return (
     <div className="flex flex-col h-screen bg-theme-background text-theme-foreground">

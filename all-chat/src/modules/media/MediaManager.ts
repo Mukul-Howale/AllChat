@@ -1,5 +1,6 @@
 import { useState, useCallback } from 'react';
 import { logEvent } from '@/utils/logging';
+import { defaultMobileConstraints } from './MobileMediaUtils';
 
 export interface MediaState {
   isVideoOn: boolean;
@@ -13,6 +14,10 @@ export interface MediaStreamConfig {
   onError?: (error: { type: 'media' | 'connection' | 'other'; message: string }) => void;
 }
 
+const isMobile = () => {
+  return /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
+};
+
 export const useMediaStream = (config?: MediaStreamConfig) => {
   const [isVideoOn, setIsVideoOn] = useState(true);
   const [isAudioOn, setIsAudioOn] = useState(true);
@@ -24,8 +29,13 @@ export const useMediaStream = (config?: MediaStreamConfig) => {
     const effectiveVideo = isVideoOn;
     const effectiveAudio = !isVideoOn || isAudioOn; // If video is off, force audio on
 
-    logEvent('Attempting to get media stream', { video: effectiveVideo, audio: effectiveAudio });
-    const constraints = {
+    logEvent('Attempting to get media stream', { video: effectiveVideo, audio: effectiveAudio, isMobile: isMobile() });
+
+    // Use different constraints for mobile devices
+    const constraints = isMobile() ? {
+      video: effectiveVideo ? defaultMobileConstraints.video : false,
+      audio: effectiveAudio ? defaultMobileConstraints.audio : false
+    } : {
       video: effectiveVideo,
       audio: effectiveAudio
     };
@@ -47,24 +57,45 @@ export const useMediaStream = (config?: MediaStreamConfig) => {
       const errorMessage = err instanceof Error ? err.message : 'Unknown error occurred';
       logEvent('Failed with initial constraints, trying fallbacks', { error: errorMessage });
       
-      // Try audio only if video fails
-      if (effectiveVideo) {
+      // Try with simpler constraints for mobile
+      if (isMobile() && effectiveVideo) {
         try {
-          logEvent('Attempting audio-only stream');
-          const audioStream = await navigator.mediaDevices.getUserMedia({ video: false, audio: true });
-          setIsVideoOn(false);
-          setHasVideo(false);
+          logEvent('Attempting with basic mobile constraints');
+          const mobileStream = await navigator.mediaDevices.getUserMedia({
+            video: { facingMode: 'user' }, // Just try to get the front camera
+            audio: true
+          });
+          setHasVideo(true);
           setHasAudio(true);
+          setIsVideoOn(true);
           setIsAudioOn(true);
-          return audioStream;
-        } catch (audioErr) {
-          const audioErrorMessage = audioErr instanceof Error ? audioErr.message : 'Unknown error occurred';
-          logEvent('Failed to get audio-only stream', { error: audioErrorMessage });
-          throw audioErr;
+          return mobileStream;
+        } catch (mobileErr) {
+          logEvent('Failed with basic mobile constraints, trying audio only');
         }
       }
-      
-      throw err;
+
+      // Try audio only as last resort
+      try {
+        logEvent('Attempting audio-only stream');
+        const audioStream = await navigator.mediaDevices.getUserMedia({ 
+          video: false, 
+          audio: {
+            echoCancellation: true,
+            noiseSuppression: true,
+            autoGainControl: true
+          }
+        });
+        setIsVideoOn(false);
+        setHasVideo(false);
+        setHasAudio(true);
+        setIsAudioOn(true);
+        return audioStream;
+      } catch (audioErr) {
+        const audioErrorMessage = audioErr instanceof Error ? audioErr.message : 'Unknown error occurred';
+        logEvent('Failed to get audio-only stream', { error: audioErrorMessage });
+        throw new Error('Could not access any media devices. Please check your camera and microphone permissions and ensure your browser has access to media devices.');
+      }
     }
   }, [isVideoOn, isAudioOn]);
 
