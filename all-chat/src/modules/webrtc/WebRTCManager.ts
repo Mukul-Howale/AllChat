@@ -1,5 +1,6 @@
 import { useRef, useState } from 'react';
 import { logEvent } from '@/utils/logging';
+import { safeSendWebSocket } from '@/utils/websocket';
 import React from 'react';
 
 export interface WebRTCState {
@@ -57,15 +58,7 @@ export const useWebRTC = (currentUserId?: string) => {
       }
 
       peerConnection.onicecandidate = (event) => {
-        if (event.candidate && websocket.current) {
-          logEvent('ICE candidate generated', { remoteUserId });
-          websocket.current.send(JSON.stringify({
-            type: 'ice-candidate',
-            candidate: event.candidate,
-            to: remoteUserId,
-            from: currentUserId
-          }));
-        }
+        handleIceCandidate(event, remoteUserId);
       };
 
       peerConnection.ontrack = (event) => {
@@ -117,6 +110,23 @@ export const useWebRTC = (currentUserId?: string) => {
     }
   };
 
+  const handleIceCandidate = async (event: RTCPeerConnectionIceEvent, remoteUserId: string) => {
+    try {
+      if (event.candidate && websocket.current) {
+        logEvent('ICE candidate generated', { remoteUserId });
+        
+        safeSendWebSocket(websocket.current, {
+          type: 'ice-candidate',
+          candidate: event.candidate,
+          to: remoteUserId,
+          from: currentUserId
+        });
+      }
+    } catch (error) {
+      logEvent('Error handling ICE candidate', { error, remoteUserId });
+    }
+  };
+
   const handleWebRTCSignaling = async (message: any) => {
     const { type, from, to, sdp, candidate } = message;
     
@@ -141,14 +151,12 @@ export const useWebRTC = (currentUserId?: string) => {
           const answer = await pc.createAnswer();
           await pc.setLocalDescription(answer);
           
-          if (websocket.current) {
-            websocket.current.send(JSON.stringify({
-              type: 'answer',
-              sdp: answer,
-              to: from,
-              from: currentUserId
-            }));
-          }
+          safeSendWebSocket(websocket.current, {
+            type: 'answer',
+            sdp: answer,
+            to: from,
+            from: currentUserId
+          });
           break;
           
         case 'answer':
@@ -178,14 +186,12 @@ export const useWebRTC = (currentUserId?: string) => {
       const offer = await pc.createOffer();
       await pc.setLocalDescription(offer);
 
-      if (websocket.current) {
-        websocket.current.send(JSON.stringify({
-          type: 'offer',
-          sdp: offer,
-          to: remoteUserId,
-          from: currentUserId
-        }));
-      }
+      safeSendWebSocket(websocket.current, {
+        type: 'offer',
+        sdp: offer,
+        to: remoteUserId,
+        from: currentUserId
+      });
     } catch (err) {
       const errorMessage = err instanceof Error ? err.message : 'Unknown error occurred';
       logEvent('Error creating offer', { error: errorMessage });
