@@ -13,6 +13,7 @@ import { useWebRTC } from '@/modules/webrtc/WebRTCManager';
 import { useMediaStream } from '@/modules/media/MediaManager';
 import { logEvent } from '@/utils/logging';
 import { getWebSocketUrl } from '@/config/websocket';
+import { safeSendWebSocket } from '@/utils/websocket';
 
 const VideoChat: React.FC = observer(() => {
   const router = useRouter();
@@ -144,6 +145,15 @@ const VideoChat: React.FC = observer(() => {
 
   const handleStopChat = () => {
     logEvent('Stopping chat');
+    
+    // Send end chat message to server
+    if (isMatched) {
+      safeSendWebSocket(websocket.current, {
+        type: 'END_CHAT',
+        userId: currentUser?.id
+      });
+    }
+
     cleanupWebRTC();
 
     // Stop media streams
@@ -431,6 +441,15 @@ const VideoChat: React.FC = observer(() => {
               setIsChatActive(false);
               setMatchedUsers([]);
               cleanupWebRTC();
+              break;
+
+            case 'END_CHAT':
+              if (message.userId !== currentUser?.id) {
+                // Other user ended the chat
+                handleStopChat();
+                setIsWaiting(true);
+                handleStartChat();
+              }
               break;
 
             case 'offer':

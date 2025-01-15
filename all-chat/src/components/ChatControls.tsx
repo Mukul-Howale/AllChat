@@ -51,7 +51,7 @@ const ChatControls: React.FC<ChatControlsProps> = ({
               onClick={handleStopChat}
               className="w-full md:w-auto px-8 py-3 md:py-2 text-lg md:text-base font-medium bg-red-500 hover:bg-red-600 text-white rounded-full"
             >
-              Leave
+              End Chat
             </Button>
           </>
         )}
