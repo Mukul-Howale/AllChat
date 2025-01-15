@@ -53,6 +53,10 @@ const VideoChat: React.FC = observer(() => {
     onError: setError
   });
 
+  // Constants for chat configuration
+  const MIN_GROUP_SIZE = 2;
+  const MAX_GROUP_SIZE = 2;
+
   const handleStartChat = async () => {
     logEvent('Starting chat');
     if (!currentUser) {
@@ -291,7 +295,6 @@ const VideoChat: React.FC = observer(() => {
             setMatchedUsers(message.users);
             setIsMatched(true);
             setIsWaiting(false);
-            // Only now set chat as active
             setIsChatActive(true);
             // Initiate calls to all matched users
             message.users.forEach((userId: string) => {
@@ -307,24 +310,40 @@ const VideoChat: React.FC = observer(() => {
             setIsWaiting(false);
             setIsChatActive(false);
             setMatchedUsers([]);
+            cleanupWebRTC();
             break;
 
           case 'user-left-match':
             logEvent('User left match', { userId: message.userId });
             setMatchedUsers(prev => prev.filter(id => id !== message.userId));
             // If not enough users remain, end the chat
-            if (matchedUsers.length < 2) {
+            if (matchedUsers.length < MIN_GROUP_SIZE) {
               setIsMatched(false);
               setIsChatActive(false);
               setMatchedUsers([]);
+              cleanupWebRTC();
             }
             break;
-            
+
+          case 'chat-ended':
+            logEvent('Chat ended');
+            setIsMatched(false);
+            setIsChatActive(false);
+            setMatchedUsers([]);
+            cleanupWebRTC();
+            break;
+
           case 'offer':
           case 'answer':
           case 'ice-candidate':
-            if (isChatActive && isMatched) {
+            if (isChatActive && isMatched && matchedUsers.includes(message.from)) {
               handleWebRTCSignaling(message);
+            } else {
+              logEvent('Ignored WebRTC signal - invalid state or sender', {
+                isChatActive,
+                isMatched,
+                isValidSender: matchedUsers.includes(message.from)
+              });
             }
             break;
             
