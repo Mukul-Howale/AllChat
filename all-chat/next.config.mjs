@@ -1,8 +1,19 @@
 /** @type {import('next').NextConfig} */
 const nextConfig = {
-  // Enable HTTPS in development
-  webSocketServer: {
-    url: process.env.NEXT_PUBLIC_WS_URL || 'wss://localhost:8093',
+  // Development server configuration
+  server: {
+    https: true
+  },
+  webpack: (config, { isServer }) => {
+    // Add WebSocket support
+    if (!isServer) {
+      config.resolve.fallback = {
+        ...config.resolve.fallback,
+        net: false,
+        tls: false,
+      };
+    }
+    return config;
   },
   // Allow connections from local network for mobile testing
   async rewrites() {

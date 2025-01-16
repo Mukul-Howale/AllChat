@@ -4,7 +4,6 @@
   "private": true,
   "scripts": {
     "dev": "next dev",
-    "dev:https": "local-ssl-proxy --source 3001 --target 3000 --cert ./certificates/localhost.pem --key ./certificates/localhost-key.pem",
     "build": "next build",
     "start": "next start",
     "lint": "next lint"
@@ -41,6 +40,7 @@
     "@types/react": "^18",
     "@types/react-dom": "^18",
     "@types/uuid": "^10.0.0",
+    "@vitejs/plugin-basic-ssl": "^1.2.0",
     "autoprefixer": "^10.4.20",
     "eslint": "^8",
     "eslint-config-next": "14.2.6",
