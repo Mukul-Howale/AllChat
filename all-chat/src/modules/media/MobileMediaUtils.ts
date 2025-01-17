@@ -31,8 +31,15 @@ export const getMediaDevices = async (): Promise<{
   videoDevices: MediaDeviceInfo[];
   audioDevices: MediaDeviceInfo[];
 }> => {
+  if (!navigator.mediaDevices?.enumerateDevices) {
+    throw new Error('Media devices API not supported');
+  }
+
   try {
+    // Request permissions first
     await navigator.mediaDevices.getUserMedia({ video: true, audio: true });
+    
+    // Then enumerate devices
     const devices = await navigator.mediaDevices.enumerateDevices();
 
     const videoDevices = devices
@@ -53,90 +60,63 @@ export const getMediaDevices = async (): Promise<{
 
     return { videoDevices, audioDevices };
   } catch (error) {
-    logEvent('Error getting media devices', { error });
+    logEvent('Failed to get media devices', { error });
     throw error;
   }
 };
 
 // Switch camera (front/back)
 export const switchCamera = async (currentStream: MediaStream): Promise<MediaStream> => {
+  const currentTrack = currentStream.getVideoTracks()[0];
+  const currentFacingMode = currentTrack.getSettings().facingMode;
+
+  // Stop current track
+  currentTrack.stop();
+
+  // Request new stream with opposite facing mode
+  const newConstraints: MediaConstraints = {
+    ...defaultMobileConstraints,
+    video: {
+      ...defaultMobileConstraints.video as MediaTrackConstraints,
+      facingMode: currentFacingMode === 'user' ? 'environment' : 'user'
+    }
+  };
+
   try {
-    const currentVideoTrack = currentStream.getVideoTracks()[0];
-    const currentFacingMode = currentVideoTrack.getSettings().facingMode;
-    
-    // Toggle between front and back camera
-    const newFacingMode = currentFacingMode === 'user' ? 'environment' : 'user';
-    
-    const newStream = await navigator.mediaDevices.getUserMedia({
-      video: {
-        facingMode: newFacingMode,
-        width: { ideal: 640 },
-        height: { ideal: 480 },
-        frameRate: { max: 24 }
-      },
-      audio: false // Keep existing audio track
-    });
-
-    // Stop old video track
-    currentVideoTrack.stop();
-
-    // Get the new video track
-    const newVideoTrack = newStream.getVideoTracks()[0];
-
-    // Replace the video track in the current stream
-    const audioTrack = currentStream.getAudioTracks()[0];
-    const combinedStream = new MediaStream([newVideoTrack, audioTrack]);
-
-    return combinedStream;
+    const newStream = await navigator.mediaDevices.getUserMedia(newConstraints);
+    return newStream;
   } catch (error) {
-    logEvent('Error switching camera', { error });
+    logEvent('Failed to switch camera', { error });
     throw error;
   }
 };
 
 // Optimize media constraints based on network conditions
 export const getOptimizedConstraints = async (): Promise<MediaConstraints> => {
-  try {
-    // Check if the connection is slow
-    const connection = (navigator as any).connection;
-    const isSlowConnection = connection && 
-      (connection.type === 'cellular' || connection.downlink < 1);
+  // Start with default constraints
+  const constraints = { ...defaultMobileConstraints };
 
-    if (isSlowConnection) {
-      return {
-        video: {
-          facingMode: 'user',
-          width: { ideal: 320 }, // Lower resolution for slow connections
-          height: { ideal: 240 },
-          frameRate: { max: 15 }
-        },
-        audio: {
-          echoCancellation: true,
-          noiseSuppression: true,
-          autoGainControl: true
-        }
-      };
+  try {
+    // Check connection type if available
+    if ('connection' in navigator && navigator.connection) {
+      const connection = (navigator as any).connection;
+      
+      if (connection.effectiveType === '4g') {
+        // On good connections, allow higher quality
+        (constraints.video as MediaTrackConstraints).width = { ideal: 1280 };
+        (constraints.video as MediaTrackConstraints).height = { ideal: 720 };
+        (constraints.video as MediaTrackConstraints).frameRate = { max: 30 };
+      } else {
+        // On slower connections, reduce quality further
+        (constraints.video as MediaTrackConstraints).width = { ideal: 480 };
+        (constraints.video as MediaTrackConstraints).height = { ideal: 360 };
+        (constraints.video as MediaTrackConstraints).frameRate = { max: 15 };
+      }
     }
 
-    return defaultMobileConstraints;
+    return constraints;
   } catch (error) {
-    logEvent('Error getting optimized constraints', { error });
+    logEvent('Error optimizing constraints', { error });
     return defaultMobileConstraints;
-  }
-};
-
-// Handle orientation change
-export const handleOrientationChange = async (stream: MediaStream): Promise<void> => {
-  try {
-    const videoTrack = stream.getVideoTracks()[0];
-    if (!videoTrack) return;
-
-    const isPortrait = window.innerHeight > window.innerWidth;
-    await videoTrack.applyConstraints({
-      width: { ideal: isPortrait ? 480 : 640 },
-      height: { ideal: isPortrait ? 640 : 480 }
-    });
-  } catch (error) {
-    logEvent('Error handling orientation change', { error });
   }
 };

@@ -1,9 +1,5 @@
 /** @type {import('next').NextConfig} */
 const nextConfig = {
-  // Development server configuration
-  server: {
-    https: true
-  },
   webpack: (config, { isServer }) => {
     // Add WebSocket support
     if (!isServer) {

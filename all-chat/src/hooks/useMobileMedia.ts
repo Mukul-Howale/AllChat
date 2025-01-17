@@ -26,10 +26,31 @@ export const useMobileMedia = ({ onError }: UseMobileMediaProps = {}) => {
 
   const [currentCamera, setCurrentCamera] = useState<'user' | 'environment'>('user');
   const [isLoading, setIsLoading] = useState(false);
+  const [browserSupported, setBrowserSupported] = useState(true);
 
-  // Initialize devices
+  // Check browser compatibility
+  useEffect(() => {
+    const checkBrowserSupport = () => {
+      if (typeof window === 'undefined') return;
+      
+      const hasMediaDevices = !!(navigator.mediaDevices && navigator.mediaDevices.getUserMedia);
+      setBrowserSupported(hasMediaDevices);
+      
+      if (!hasMediaDevices) {
+        const error = new Error('Your browser does not support camera/microphone access. Please use a modern browser like Chrome, Firefox, or Edge.');
+        logEvent('Browser media devices not supported', { error });
+        onError?.(error);
+      }
+    };
+
+    checkBrowserSupport();
+  }, [onError]);
+
+  // Initialize devices only if browser is supported
   useEffect(() => {
     const initDevices = async () => {
+      if (!browserSupported) return;
+
       try {
         const mediaDevices = await getMediaDevices();
         setDevices(mediaDevices);
@@ -42,10 +63,14 @@ export const useMobileMedia = ({ onError }: UseMobileMediaProps = {}) => {
     if (isMobile) {
       initDevices();
     }
-  }, [isMobile, onError]);
+  }, [isMobile, browserSupported, onError]);
 
   // Get media stream with optimized constraints
   const getOptimizedStream = async () => {
+    if (!browserSupported) {
+      throw new Error('Browser does not support media devices');
+    }
+
     setIsLoading(true);
     try {
       const constraints = await getOptimizedConstraints();
@@ -62,6 +87,10 @@ export const useMobileMedia = ({ onError }: UseMobileMediaProps = {}) => {
 
   // Switch between front and back cameras
   const toggleCamera = async (currentStream: MediaStream) => {
+    if (!browserSupported) {
+      throw new Error('Browser does not support media devices');
+    }
+
     setIsLoading(true);
     try {
       const newStream = await switchCamera(currentStream);
@@ -82,9 +111,10 @@ export const useMobileMedia = ({ onError }: UseMobileMediaProps = {}) => {
   return {
     isMobile,
     isLoading,
-    devices,
+    browserSupported,
     currentCamera,
     hasMultipleCameras,
+    devices,
     getOptimizedStream,
     toggleCamera
   };
