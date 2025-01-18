@@ -6,7 +6,6 @@ const nextConfig = {
       config.resolve.fallback = {
         ...config.resolve.fallback,
         net: false,
-        tls: false,
       };
     }
     return config;
