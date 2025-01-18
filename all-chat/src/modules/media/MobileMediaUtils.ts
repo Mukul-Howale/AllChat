@@ -120,3 +120,25 @@ export const getOptimizedConstraints = async (): Promise<MediaConstraints> => {
     return defaultMobileConstraints;
   }
 };
+
+// Handle device orientation changes for video streams
+export async function handleOrientationChange(stream: MediaStream): Promise<void> {
+  if (!stream) return;
+  
+  const videoTrack = stream.getVideoTracks()[0];
+  if (!videoTrack) return;
+
+  try {
+    // Get current constraints
+    const constraints = videoTrack.getConstraints();
+    
+    // Apply the same constraints to trigger a re-initialization
+    // This helps handle orientation changes properly
+    await videoTrack.applyConstraints(constraints);
+    
+    logEvent('orientation_change_handled', { success: true });
+  } catch (error) {
+    logEvent('orientation_change_error', { error: (error as Error).message });
+    console.error('Error handling orientation change:', error);
+  }
+}
