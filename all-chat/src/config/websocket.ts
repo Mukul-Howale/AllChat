@@ -6,7 +6,7 @@ export const getWebSocketUrl = () => {
     return ''; // Return empty string during server-side rendering
   }
 
-  const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
+  const protocol = process.env.NEXT_PUBLIC_WS_PROTOCOL || (window.location.protocol === 'https:' ? 'wss:' : 'ws:');
   const hostname = process.env.NEXT_PUBLIC_WS_HOST || window.location.hostname;
   const port = process.env.NEXT_PUBLIC_WS_PORT || '8093';
   
@@ -18,6 +18,8 @@ export const getWebSocketUrl = () => {
     url,
     envHost: process.env.NEXT_PUBLIC_WS_HOST,
     envPort: process.env.NEXT_PUBLIC_WS_PORT,
+    envProtocol: process.env.NEXT_PUBLIC_WS_PROTOCOL,
+    locationProtocol: window.location.protocol,
     locationHostname: window.location.hostname
   });
   

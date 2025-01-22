@@ -25,6 +25,16 @@ export const useMediaStream = (config?: MediaStreamConfig) => {
   const [hasAudio, setHasAudio] = useState(false);
 
   const getAvailableMediaStream = useCallback(async () => {
+    // Check if MediaDevices API is supported
+    if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+      const error = new Error('MediaDevices API is not supported in this browser. Please use a modern browser with camera and microphone support.');
+      logEvent('MediaDevices API not supported', { error: error.message });
+      if (config?.onError) {
+        config.onError({ type: 'media', message: error.message });
+      }
+      throw error;
+    }
+
     // Ensure at least one of video or audio is true
     const effectiveVideo = isVideoOn;
     const effectiveAudio = !isVideoOn || isAudioOn; // If video is off, force audio on
