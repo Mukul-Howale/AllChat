@@ -32,6 +32,13 @@ const nextConfig = {
       },
     ];
   },
+  // Development server configuration
+  server: {
+    https: {
+      key: './certificates/localhost.key',
+      cert: './certificates/localhost.crt',
+    },
+  },
 };
 
 export default nextConfig;
