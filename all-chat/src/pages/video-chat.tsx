@@ -23,6 +23,7 @@ const VideoChat: React.FC = observer(() => {
   const [isWaiting, setIsWaiting] = useState(false);
   const [isMatched, setIsMatched] = useState(false);
   const [matchedUsers, setMatchedUsers] = useState<string[]>([]);
+  const [remoteUsername, setRemoteUsername] = useState<string>('');
   const [messages, setMessages] = useState<{ content: string; sender: string; id: string; timestamp: Date }[]>([]);
   const [error, setError] = useState<{ type: 'media' | 'connection' | 'other'; message: string } | null>(null);
   const [wsConnected, setWsConnected] = useState(false);
@@ -138,12 +139,14 @@ const VideoChat: React.FC = observer(() => {
       logEvent('Sending looking-for-match', {
         websocketExists: !!websocket.current,
         readyState: websocket.current?.readyState,
-        userId: currentUser.id
+        userId: currentUser.id,
+        name: currentUser.name
       });
 
       const message = JSON.stringify({
         type: 'looking-for-match',
-        userId: currentUser.id
+        userId: currentUser.id,
+        name: currentUser.name
       });
       
       if (websocket.current?.readyState === WebSocket.OPEN) {
@@ -302,6 +305,8 @@ const VideoChat: React.FC = observer(() => {
           remoteVideos={remoteVideos}
           isChatActive={isChatActive}
           className="h-full"
+          localUsername={currentUser?.name}
+          remoteUsername={remoteUsername}
         />
         <div className="absolute bottom-4 left-1/2 transform -translate-x-1/2">
           <MediaControls
@@ -330,7 +335,8 @@ const VideoChat: React.FC = observer(() => {
       logEvent('Resending looking-for-match after connection established');
       websocket.current?.send(JSON.stringify({
         type: 'looking-for-match',
-        userId: currentUser?.id
+        userId: currentUser?.id,
+        name: currentUser.name
       }));
     }
   };
@@ -394,8 +400,13 @@ const VideoChat: React.FC = observer(() => {
           break;
           
         case 'match-found':
-          logEvent('Match found', { users: message.users });
+          logEvent('Match found', { users: message.users, usernames: message.usernames });
           setMatchedUsers(message.users);
+          // Set the remote username - find the username that doesn't belong to current user
+          if (message.usernames && Array.isArray(message.usernames)) {
+            const otherName = message.usernames.find((name: string) => name !== currentUser?.name);
+            setRemoteUsername(otherName || '');
+          }
           setIsMatched(true);
           setIsWaiting(false);
           setIsChatActive(true);
@@ -413,12 +424,14 @@ const VideoChat: React.FC = observer(() => {
           setIsWaiting(false);
           setIsChatActive(false);
           setMatchedUsers([]);
+          setRemoteUsername('');
           cleanupWebRTC();
           break;
 
         case 'user-left-match':
           logEvent('User left match', { userId: message.userId });
           setMatchedUsers(prev => prev.filter(id => id !== message.userId));
+          setRemoteUsername('');
           // If not enough users remain, end the chat
           if (matchedUsers.length < MIN_GROUP_SIZE) {
             setIsMatched(false);
@@ -433,6 +446,7 @@ const VideoChat: React.FC = observer(() => {
           setIsMatched(false);
           setIsChatActive(false);
           setMatchedUsers([]);
+          setRemoteUsername('');
           cleanupWebRTC();
           break;
 

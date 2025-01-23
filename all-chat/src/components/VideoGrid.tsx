@@ -7,9 +7,18 @@ interface VideoGridProps {
   remoteVideos: React.RefObject<HTMLVideoElement>[];
   isChatActive: boolean;
   className?: string;
+  localUsername?: string;
+  remoteUsername?: string;
 }
 
-const VideoGrid: React.FC<VideoGridProps> = ({ localVideoRef, remoteVideos, isChatActive, className }) => {
+const VideoGrid: React.FC<VideoGridProps> = ({ 
+  localVideoRef, 
+  remoteVideos, 
+  isChatActive, 
+  className,
+  localUsername,
+  remoteUsername 
+}) => {
   // Always use 2-person layout
   const getGridClass = () => {
     return 'grid-cols-1 md:grid-cols-2'; // Stack vertically on mobile, side by side on desktop
@@ -32,21 +41,35 @@ const VideoGrid: React.FC<VideoGridProps> = ({ localVideoRef, remoteVideos, isCh
           className={`${getVideoContainerClass(index)} bg-gray-800 touch-none`}
         >
           {index === 0 ? (
-            <video 
-              ref={localVideoRef} 
-              className="absolute inset-0 w-full h-full object-cover" 
-              autoPlay 
-              muted 
-              playsInline 
-            />
-          ) : (
-            isChatActive && remoteVideos[index - 1] ? (
+            <>
               <video 
-                ref={remoteVideos[index - 1]} 
+                ref={localVideoRef} 
                 className="absolute inset-0 w-full h-full object-cover" 
                 autoPlay 
+                muted 
                 playsInline 
               />
+              {localUsername && (
+                <div className="absolute bottom-2 left-2 bg-black/50 text-white px-2 py-1 rounded">
+                  {localUsername}
+                </div>
+              )}
+            </>
+          ) : (
+            isChatActive && remoteVideos[index - 1] ? (
+              <>
+                <video 
+                  ref={remoteVideos[index - 1]} 
+                  className="absolute inset-0 w-full h-full object-cover" 
+                  autoPlay 
+                  playsInline 
+                />
+                {remoteUsername && (
+                  <div className="absolute bottom-2 left-2 bg-black/50 text-white px-2 py-1 rounded">
+                    {remoteUsername}
+                  </div>
+                )}
+              </>
             ) : (
               <div className="absolute inset-0 flex items-center justify-center bg-gray-700">
                 <User className="w-16 h-16 md:w-24 md:h-24 text-gray-400" />
