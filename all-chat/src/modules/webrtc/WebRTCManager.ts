@@ -81,7 +81,7 @@ export const useWebRTC = (currentUserId?: string) => {
       // Initialize RTCPeerConnection with ICE servers for WebRTC
       const peerConnection = new RTCPeerConnection(configuration);
 
-      // Add local tracks to the peer connection
+      // TEMPORARY: Add local tracks to the peer connection if available
       if (mediaStreamRef.current) {
         mediaStreamRef.current.getTracks().forEach(track => {
           if (mediaStreamRef.current) {
@@ -92,6 +92,8 @@ export const useWebRTC = (currentUserId?: string) => {
             });
           }
         });
+      } else {
+        logEvent('Creating peer connection without media tracks', { remoteUserId });
       }
 
       peerConnection.onicecandidate = (event) => {

@@ -109,25 +109,30 @@ const VideoChat: React.FC = observer(() => {
     try {
       setIsWaiting(true);
       setIsMatched(false);
-      logEvent('Checking if getUserMedia is supported');
-      if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
-        setError({
-          type: 'media',
-          message: 'Your browser does not support camera/microphone access. Please use a modern browser like Chrome, Firefox, or Edge.'
-        });
-        return;
-      }
-
-      logEvent('Getting media stream');
-      const stream = await getAvailableMediaStream();
-      mediaStreamRef.current = stream;
       
-      logEvent('Setting local video stream');
-      if (localVideoRef.current) {
-        localVideoRef.current.srcObject = stream;
+      let stream = null;
+      try {
+        if (navigator.mediaDevices) {
+          logEvent('Getting media stream');
+          stream = await getAvailableMediaStream();
+        } else {
+          logEvent('Media devices not supported');
+        }
+      } catch (error) {
+        logEvent('Error accessing media devices', error);
       }
-
-      setMediaStream(stream);
+      
+      if (stream instanceof MediaStream) {
+        mediaStreamRef.current = stream;
+      }
+      
+      if (stream && localVideoRef.current) {
+        logEvent('Setting local video stream');
+        if (stream instanceof MediaStream) {
+          localVideoRef.current.srcObject = stream;
+          setMediaStream(stream);
+        }
+      }
 
       // Send looking-for-match signal to server
       logEvent('Sending looking-for-match', {

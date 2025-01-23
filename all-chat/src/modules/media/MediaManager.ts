@@ -94,7 +94,11 @@ export const useMediaStream = (config?: MediaStreamConfig) => {
       } catch (audioErr) {
         const audioErrorMessage = audioErr instanceof Error ? audioErr.message : 'Unknown error occurred';
         logEvent('Failed to get audio-only stream', { error: audioErrorMessage });
-        throw new Error('Could not access any media devices. Please check your camera and microphone permissions and ensure your browser has access to media devices.');
+        setIsVideoOn(false);
+        setHasVideo(false);
+        setHasAudio(false);
+        setIsAudioOn(false);
+        return null;
       }
     }
   }, [isVideoOn, isAudioOn]);
