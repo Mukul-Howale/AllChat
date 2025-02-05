@@ -140,13 +140,13 @@ const VideoChat: React.FC = observer(() => {
         websocketExists: !!websocket.current,
         readyState: websocket.current?.readyState,
         userId: currentUser.id,
-        name: currentUser.name
+        name: currentUser?.name
       });
 
       const message = JSON.stringify({
         type: 'looking-for-match',
-        userId: currentUser.id,
-        name: currentUser.name
+        userId: currentUser?.id,
+        name: currentUser?.name
       });
       
       if (websocket.current?.readyState === WebSocket.OPEN) {
@@ -336,7 +336,7 @@ const VideoChat: React.FC = observer(() => {
       websocket.current?.send(JSON.stringify({
         type: 'looking-for-match',
         userId: currentUser?.id,
-        name: currentUser.name
+        name: currentUser?.name
       }));
     }
   };
